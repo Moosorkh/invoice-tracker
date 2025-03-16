@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import path from "path";
 import dotenv from "dotenv";
 import compression from "compression"; // Add this import
 
@@ -25,6 +26,18 @@ app.use("/api/auth", authRoutes);
 app.use("/api/clients", clientRoutes);
 app.use("/api/invoices", invoiceRoutes);
 app.use("/api/payments", paymentRoutes);
+
+// Serve static files from the React app in production
+if (process.env.NODE_ENV === 'production') {
+    // Serve static files from client/dist
+    app.use(express.static(path.join(__dirname, '../../client/dist')));
+    
+    // For any request that doesn't match an API route, send the React app
+    app.get('*', (req, res) => {
+      res.sendFile(path.join(__dirname, '../../client/dist/index.html'));
+    });
+  }
+
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;

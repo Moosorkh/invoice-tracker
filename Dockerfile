@@ -13,6 +13,7 @@ COPY server/package*.json ./
 RUN npm install
 COPY server/ ./
 RUN npx prisma generate
+# No migration here - we'll do it at runtime
 RUN npm run build
 
 # Production stage
@@ -31,4 +32,9 @@ COPY --from=server-builder /app/server/prisma /app/server/prisma
 # Set up for production
 WORKDIR /app/server
 ENV NODE_ENV=production
-CMD ["npm", "start"]
+
+# Add a startup script that runs migrations before starting the app
+COPY --from=server-builder /app/server/start.sh /app/server/start.sh
+RUN chmod +x /app/server/start.sh
+
+CMD ["/app/server/start.sh"]

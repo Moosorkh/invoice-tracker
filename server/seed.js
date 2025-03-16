@@ -1,0 +1,1 @@
+const {PrismaClient}=require("@prisma/client");const p=new PrismaClient();async function main(){const c=await p.client.create({data:{name:"Test Client",email:"client@example.com"}});console.log("Client:",c);const u=await p.user.create({data:{email:"user@example.com",password:"password123"}});console.log("User:",u);}main().catch(console.error).finally(()=>p.$disconnect());

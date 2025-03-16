@@ -1,0 +1,38 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: invoicetracker
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  server:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - ./server:/app
+    ports:
+      - "5000:5000"
+    command: sh -c "npm install && npx prisma generate && npm run build && npm start"
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@db:5432/invoicetracker
+    depends_on:
+      - db
+
+  client:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - ./client:/app
+    ports:
+      - "3000:3000"
+    command: sh -c "npm install && npm run dev -- --host --port 3000"
+    depends_on:
+      - server
+
+volumes:
+  pgdata:

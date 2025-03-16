@@ -1,0 +1,44 @@
+# Node.js dependencies
+node_modules/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Build directories
+/client/dist/
+/server/dist/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Docker volumes
+/pgdata/
+/data/
+
+# Prisma
+server/prisma/migrations/*.toml
+*.db
+*.db-journal
+
+# Testing
+/coverage/
+
+# Production builds
+/build/
+
+# Temporary files
+.tmp/
+.temp/

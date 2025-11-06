@@ -28,6 +28,7 @@ COPY --from=server-builder /app/server/dist /app/server/dist
 COPY --from=server-builder /app/server/node_modules /app/server/node_modules
 COPY --from=server-builder /app/server/package.json /app/server/package.json
 COPY --from=server-builder /app/server/prisma /app/server/prisma
+COPY --from=server-builder /app/server/seed.js /app/server/seed.js
 
 # Set up for production
 WORKDIR /app/server

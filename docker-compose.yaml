@@ -11,15 +11,15 @@ services:
       - pgdata:/var/lib/postgresql/data
 
   server:
-    image: node:20-alpine
-    working_dir: /app
-    volumes:
-      - ./server:/app
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "5000:5000"
-    command: sh -c "npm install && npx prisma generate && npm run build && npm start"
     environment:
-      DATABASE_URL: postgres://postgres:postgres@db:5432/invoicetracker
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/invoicetracker
+      JWT_SECRET: your-secret-key-example
+      PORT: 5000
     depends_on:
       - db
 
@@ -28,6 +28,7 @@ services:
     working_dir: /app
     volumes:
       - ./client:/app
+      - /app/node_modules
     ports:
       - "3000:3000"
     command: sh -c "npm install && npm run dev -- --host --port 3000"

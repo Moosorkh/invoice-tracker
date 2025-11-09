@@ -55,13 +55,31 @@ router.post(
 router.get(
   "/",
   asyncHandler(async (req, res) => {
-    // Get userId from authentication token
     const userId = req.user.userId;
+    const { status, search, limit, offset } = req.query;
+
+    // Build where clause
+    const where: any = { userId };
+
+    // Filter by status
+    if (status && typeof status === "string") {
+      where.status = status;
+    }
+
+    // Search by invoice number or client name
+    if (search && typeof search === "string") {
+      where.OR = [
+        { invoiceNumber: { contains: search, mode: "insensitive" } },
+        { client: { name: { contains: search, mode: "insensitive" } } },
+      ];
+    }
+
+    // Parse pagination
+    const take = limit ? parseInt(limit as string) : undefined;
+    const skip = offset ? parseInt(offset as string) : undefined;
 
     const invoices = await prisma.invoice.findMany({
-      where: {
-        userId: userId,
-      },
+      where,
       include: {
         client: true,
         payments: true,
@@ -69,9 +87,30 @@ router.get(
       orderBy: {
         createdAt: "desc",
       },
+      take,
+      skip,
     });
 
-    res.json(invoices);
+    // Check for overdue invoices and update status
+    const now = new Date();
+    for (const invoice of invoices) {
+      if (
+        invoice.status === "pending" &&
+        invoice.dueDate &&
+        invoice.dueDate < now
+      ) {
+        await prisma.invoice.update({
+          where: { id: invoice.id },
+          data: { status: "overdue" },
+        });
+        invoice.status = "overdue";
+      }
+    }
+
+    // Get total count for pagination
+    const total = await prisma.invoice.count({ where });
+
+    res.json({ data: invoices, total });
   })
 );
 

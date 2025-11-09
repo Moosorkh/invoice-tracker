@@ -9,6 +9,7 @@ import authRoutes from "./routes/authRoutes";
 import clientRoutes from "./routes/clientRoutes";
 import invoiceRoutes from "./routes/invoiceRoutes";
 import paymentRoutes from "./routes/paymentRoutes";
+import invoiceItemRoutes from "./routes/invoiceItemRoutes";
 import { errorHandler } from "./middleware/errorHandler";
 
 dotenv.config();
@@ -26,17 +27,18 @@ app.use("/api/auth", authRoutes);
 app.use("/api/clients", clientRoutes);
 app.use("/api/invoices", invoiceRoutes);
 app.use("/api/payments", paymentRoutes);
+app.use("/api/invoice-items", invoiceItemRoutes);
 
 // Serve static files from the React app in production
-if (process.env.NODE_ENV === 'production') {
-    // Serve static files from client/dist
-    app.use(express.static(path.join(__dirname, '../../client/dist')));
-    
-    // For any request that doesn't match an API route, send the React app
-    app.get('*', (req, res) => {
-      res.sendFile(path.join(__dirname, '../../client/dist/index.html'));
-    });
-  }
+if (process.env.NODE_ENV === "production") {
+  // Serve static files from client/dist
+  app.use(express.static(path.join(__dirname, "../../client/dist")));
+
+  // For any request that doesn't match an API route, send the React app
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(__dirname, "../../client/dist/index.html"));
+  });
+}
 
 app.use(errorHandler);
 

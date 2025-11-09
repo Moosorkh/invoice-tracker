@@ -52,6 +52,9 @@ interface Invoice {
   status: string;
   createdAt: string;
   updatedAt: string;
+  invoiceNumber?: string;
+  dueDate?: string;
+  description?: string;
   client: Client;
   payments: Payment[];
 }
@@ -60,11 +63,11 @@ const InvoiceDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { token } = useAuth();
-  
+
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  
+
   // Add payment state
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [paymentForm, setPaymentForm] = useState({
@@ -83,17 +86,17 @@ const InvoiceDetail = () => {
     try {
       const response = await fetch(`/api/invoices/${id}`, {
         headers: {
-          "Authorization": `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       });
-      
+
       if (!response.ok) {
         if (response.status === 404) {
           throw new Error("Invoice not found");
         }
         throw new Error("Error fetching invoice details");
       }
-      
+
       const data = await response.json();
       setInvoice(data);
     } catch (error) {
@@ -105,12 +108,17 @@ const InvoiceDetail = () => {
   };
 
   const handlePaymentChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | SelectChangeEvent
+    e:
+      | React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+      | SelectChangeEvent
   ) => {
     const { name, value } = e.target;
     setPaymentForm({
       ...paymentForm,
-      [name]: name === "amount" && typeof value === "string" ? parseFloat(value) : value,
+      [name]:
+        name === "amount" && typeof value === "string"
+          ? parseFloat(value)
+          : value,
     });
   };
 
@@ -120,18 +128,18 @@ const InvoiceDetail = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           ...paymentForm,
-          invoiceId: id
+          invoiceId: id,
         }),
       });
-      
+
       if (!response.ok) {
         throw new Error("Failed to add payment");
       }
-      
+
       // Refresh invoice details to show new payment
       fetchInvoiceDetails();
       setPaymentOpen(false);
@@ -141,7 +149,9 @@ const InvoiceDetail = () => {
       });
     } catch (error) {
       console.error("Error adding payment:", error);
-      setError(error instanceof Error ? error.message : "Failed to add payment");
+      setError(
+        error instanceof Error ? error.message : "Failed to add payment"
+      );
     }
   };
 
@@ -159,7 +169,8 @@ const InvoiceDetail = () => {
   };
 
   // Calculate total payments
-  const totalPaid = invoice?.payments.reduce((sum, payment) => sum + payment.amount, 0) || 0;
+  const totalPaid =
+    invoice?.payments.reduce((sum, payment) => sum + payment.amount, 0) || 0;
   const remainingBalance = invoice ? invoice.amount - totalPaid : 0;
 
   if (loading) {
@@ -175,8 +186,8 @@ const InvoiceDetail = () => {
       <Container sx={{ mt: 4 }}>
         <Paper sx={{ p: 3, bgcolor: "#ffebee" }}>
           <Typography color="error">{error}</Typography>
-          <Button 
-            startIcon={<ArrowBack />} 
+          <Button
+            startIcon={<ArrowBack />}
             onClick={() => navigate("/invoices")}
             sx={{ mt: 2 }}
           >
@@ -192,8 +203,8 @@ const InvoiceDetail = () => {
       <Container sx={{ mt: 4 }}>
         <Paper sx={{ p: 3 }}>
           <Typography>Invoice not found</Typography>
-          <Button 
-            startIcon={<ArrowBack />} 
+          <Button
+            startIcon={<ArrowBack />}
             onClick={() => navigate("/invoices")}
             sx={{ mt: 2 }}
           >
@@ -206,61 +217,117 @@ const InvoiceDetail = () => {
 
   return (
     <Container sx={{ mt: 4, mb: 4 }}>
-      <Button 
-        startIcon={<ArrowBack />} 
+      <Button
+        startIcon={<ArrowBack />}
         onClick={() => navigate("/invoices")}
         sx={{ mb: 2 }}
       >
         Back to Invoices
       </Button>
-      
+
       <Paper sx={{ p: 3 }}>
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            mb: 2,
+          }}
+        >
           <Typography variant="h4">Invoice Details</Typography>
-          <Chip 
-            label={invoice.status.toUpperCase()} 
-            color={getStatusColor(invoice.status)} 
+          <Chip
+            label={invoice.status.toUpperCase()}
+            color={getStatusColor(invoice.status)}
             sx={{ fontWeight: "bold" }}
           />
         </Box>
-        
+
         <Divider sx={{ mb: 3 }} />
-        
+
         <Grid container spacing={3}>
           <Grid item xs={12} md={6}>
-            <Typography variant="subtitle2" color="textSecondary">Invoice ID</Typography>
-            <Typography variant="body1" gutterBottom>{invoice.id}</Typography>
-            
-            <Typography variant="subtitle2" color="textSecondary" sx={{ mt: 2 }}>Date Created</Typography>
+            <Typography variant="subtitle2" color="textSecondary">
+              Invoice ID
+            </Typography>
+            <Typography variant="body1" gutterBottom>
+              {invoice.invoiceNumber || invoice.id.substring(0, 8)}
+            </Typography>
+
+            <Typography
+              variant="subtitle2"
+              color="textSecondary"
+              sx={{ mt: 2 }}
+            >
+              Date Created
+            </Typography>
             <Typography variant="body1" gutterBottom>
               {new Date(invoice.createdAt).toLocaleDateString()}
             </Typography>
-            
-            <Typography variant="subtitle2" color="textSecondary" sx={{ mt: 2 }}>Last Updated</Typography>
+
+            <Typography
+              variant="subtitle2"
+              color="textSecondary"
+              sx={{ mt: 2 }}
+            >
+              Due Date
+            </Typography>
             <Typography variant="body1" gutterBottom>
-              {new Date(invoice.updatedAt).toLocaleDateString()}
+              {invoice.dueDate
+                ? new Date(invoice.dueDate).toLocaleDateString()
+                : "Not set"}
             </Typography>
           </Grid>
-          
+
           <Grid item xs={12} md={6}>
-            <Typography variant="subtitle2" color="textSecondary">Client</Typography>
-            <Typography variant="body1" gutterBottom>{invoice.client.name}</Typography>
-            
-            <Typography variant="subtitle2" color="textSecondary" sx={{ mt: 2 }}>Client Email</Typography>
-            <Typography variant="body1" gutterBottom>{invoice.client.email}</Typography>
-            
-            <Typography variant="subtitle2" color="textSecondary" sx={{ mt: 2 }}>Amount</Typography>
-            <Typography variant="body1" gutterBottom>${invoice.amount.toFixed(2)}</Typography>
+            <Typography variant="subtitle2" color="textSecondary">
+              Client
+            </Typography>
+            <Typography variant="body1" gutterBottom>
+              {invoice.client.name}
+            </Typography>
+
+            <Typography
+              variant="subtitle2"
+              color="textSecondary"
+              sx={{ mt: 2 }}
+            >
+              Client Email
+            </Typography>
+            <Typography variant="body1" gutterBottom>
+              {invoice.client.email}
+            </Typography>
+
+            <Typography
+              variant="subtitle2"
+              color="textSecondary"
+              sx={{ mt: 2 }}
+            >
+              Amount
+            </Typography>
+            <Typography variant="body1" gutterBottom>
+              ${invoice.amount.toFixed(2)}
+            </Typography>
           </Grid>
+
+          {invoice.description && (
+            <Grid item xs={12}>
+              <Typography variant="subtitle2" color="textSecondary">
+                Description
+              </Typography>
+              <Typography variant="body1">{invoice.description}</Typography>
+            </Grid>
+          )}
         </Grid>
-        
+
         <Box sx={{ mt: 4, mb: 2 }}>
           <Typography variant="h6">Payment Summary</Typography>
           <Grid container spacing={2} sx={{ mt: 1 }}>
             <Grid item xs={4}>
               <Paper sx={{ p: 2, textAlign: "center", bgcolor: "#e3f2fd" }}>
                 <Typography variant="subtitle2">Total Amount</Typography>
-                <Typography variant="h6">${invoice.amount.toFixed(2)}</Typography>
+                <Typography variant="h6">
+                  ${invoice.amount.toFixed(2)}
+                </Typography>
               </Paper>
             </Grid>
             <Grid item xs={4}>
@@ -270,31 +337,48 @@ const InvoiceDetail = () => {
               </Paper>
             </Grid>
             <Grid item xs={4}>
-              <Paper sx={{ p: 2, textAlign: "center", bgcolor: remainingBalance > 0 ? "#fff3e0" : "#e8f5e9" }}>
+              <Paper
+                sx={{
+                  p: 2,
+                  textAlign: "center",
+                  bgcolor: remainingBalance > 0 ? "#fff3e0" : "#e8f5e9",
+                }}
+              >
                 <Typography variant="subtitle2">Balance</Typography>
-                <Typography variant="h6">${remainingBalance.toFixed(2)}</Typography>
+                <Typography variant="h6">
+                  ${remainingBalance.toFixed(2)}
+                </Typography>
               </Paper>
             </Grid>
           </Grid>
         </Box>
-        
+
         <Box sx={{ mt: 4 }}>
-          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              mb: 2,
+            }}
+          >
             <Typography variant="h6">Payment History</Typography>
             {remainingBalance > 0 && (
-              <Button 
-                variant="contained" 
-                color="primary" 
-                startIcon={<PaymentIcon />} 
+              <Button
+                variant="contained"
+                color="primary"
+                startIcon={<PaymentIcon />}
                 onClick={() => setPaymentOpen(true)}
               >
                 Add Payment
               </Button>
             )}
           </Box>
-          
+
           {invoice.payments.length === 0 ? (
-            <Typography variant="body2" color="textSecondary">No payments recorded yet.</Typography>
+            <Typography variant="body2" color="textSecondary">
+              No payments recorded yet.
+            </Typography>
           ) : (
             <TableContainer component={Paper} variant="outlined">
               <Table>
@@ -308,11 +392,15 @@ const InvoiceDetail = () => {
                 <TableBody>
                   {invoice.payments.map((payment) => (
                     <TableRow key={payment.id}>
-                      <TableCell>{new Date(payment.createdAt).toLocaleDateString()}</TableCell>
-                      <TableCell sx={{ textTransform: 'capitalize' }}>
-                        {payment.method.replace('_', ' ')}
+                      <TableCell>
+                        {new Date(payment.createdAt).toLocaleDateString()}
                       </TableCell>
-                      <TableCell align="right">${payment.amount.toFixed(2)}</TableCell>
+                      <TableCell sx={{ textTransform: "capitalize" }}>
+                        {payment.method.replace("_", " ")}
+                      </TableCell>
+                      <TableCell align="right">
+                        ${payment.amount.toFixed(2)}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -321,7 +409,7 @@ const InvoiceDetail = () => {
           )}
         </Box>
       </Paper>
-      
+
       {/* Add Payment Dialog */}
       <Dialog open={paymentOpen} onClose={() => setPaymentOpen(false)}>
         <DialogTitle>Record Payment</DialogTitle>
@@ -338,7 +426,7 @@ const InvoiceDetail = () => {
             inputProps={{ max: remainingBalance }}
             helperText={`Maximum payment: $${remainingBalance.toFixed(2)}`}
           />
-          
+
           <FormControl fullWidth margin="dense">
             <InputLabel id="payment-method-label">Payment Method</InputLabel>
             <Select
@@ -358,11 +446,13 @@ const InvoiceDetail = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setPaymentOpen(false)}>Cancel</Button>
-          <Button 
-            variant="contained" 
-            color="primary" 
+          <Button
+            variant="contained"
+            color="primary"
             onClick={handleAddPayment}
-            disabled={paymentForm.amount <= 0 || paymentForm.amount > remainingBalance}
+            disabled={
+              paymentForm.amount <= 0 || paymentForm.amount > remainingBalance
+            }
           >
             Record Payment
           </Button>

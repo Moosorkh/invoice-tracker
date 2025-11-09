@@ -21,7 +21,6 @@ import {
 } from "@mui/material";
 import { Edit, Delete } from "@mui/icons-material";
 import { useAuth } from "../context/AuthContext"; // Import your auth context
-import { set } from "zod";
 
 const API_URL = "/api/clients";
 
@@ -55,16 +54,18 @@ const Clients = () => {
     try {
       const res = await fetch(API_URL, {
         headers: {
-          "Authorization": `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       });
 
       if (!res.ok) {
         throw new Error(`Status: ${res.status}`);
       }
 
-      const data = await res.json();
-      setClients(data);
+      const responseData = await res.json();
+      // Handle new API response format { data: [], total: 0 }
+      const data = responseData.data || responseData;
+      setClients(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error fetching clients:", error);
       setError("Failed to load clients. Please try again.");
@@ -88,7 +89,7 @@ const Clients = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(form),
       });
@@ -104,7 +105,9 @@ const Clients = () => {
       setForm({ name: "", email: "" });
     } catch (error) {
       console.error("Error creating client:", error);
-      setError(error instanceof Error ? error.message : "Failed to create client");
+      setError(
+        error instanceof Error ? error.message : "Failed to create client"
+      );
     }
   };
 
@@ -122,7 +125,7 @@ const Clients = () => {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(form),
       });
@@ -137,7 +140,9 @@ const Clients = () => {
       setForm({ name: "", email: "" });
     } catch (error) {
       console.error("Error updating client:", error);
-      setError(error instanceof Error ? error.message : "Failed to update client");
+      setError(
+        error instanceof Error ? error.message : "Failed to update client"
+      );
     }
   };
 
@@ -154,8 +159,8 @@ const Clients = () => {
       const response = await fetch(`${API_URL}/${currentClient.id}`, {
         method: "DELETE",
         headers: {
-          "Authorization": `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       });
 
       if (!response.ok) {
@@ -169,7 +174,9 @@ const Clients = () => {
       setDeleteOpen(false);
     } catch (error) {
       console.error("Error deleting client:", error);
-      setError(error instanceof Error ? error.message : "Failed to delete client");
+      setError(
+        error instanceof Error ? error.message : "Failed to delete client"
+      );
     }
   };
 
@@ -321,7 +328,9 @@ const Clients = () => {
           {dialogError ? "Cannot Delete Client" : "Confirm Delete"}
         </DialogTitle>
         <DialogContent>
-          <DialogContentText sx={{ color: dialogError ? 'error.main' : 'inherit' }}>
+          <DialogContentText
+            sx={{ color: dialogError ? "error.main" : "inherit" }}
+          >
             {dialogError ||
               `Are you sure you want to delete the client "${currentClient?.name}"? This action cannot be undone.`}
           </DialogContentText>
@@ -331,11 +340,7 @@ const Clients = () => {
             {dialogError ? "OK" : "Cancel"}
           </Button>
           {!dialogError && (
-            <Button
-              variant="contained"
-              color="error"
-              onClick={handleDelete}
-            >
+            <Button variant="contained" color="error" onClick={handleDelete}>
               Delete
             </Button>
           )}

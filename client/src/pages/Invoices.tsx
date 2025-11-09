@@ -46,6 +46,9 @@ interface Invoice {
   amount: number;
   status: string;
   createdAt: string;
+  invoiceNumber?: string;
+  dueDate?: string;
+  description?: string;
   client?: { name: string };
 }
 
@@ -63,8 +66,10 @@ const Invoices = () => {
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const navigate = useNavigate();
-  
+
   // Get token from auth context
   const { token } = useAuth();
 
@@ -81,22 +86,26 @@ const Invoices = () => {
     try {
       const res = await fetch(INVOICES_URL, {
         headers: {
-          "Authorization": `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       });
-      
+
       if (!res.ok) {
         if (res.status === 401) {
           throw new Error("Please login to view invoices");
         }
         throw new Error(`Error: ${res.status}`);
       }
-      
-      const data = await res.json();
-      setInvoices(data);
+
+      const responseData = await res.json();
+      // Handle new API response format { data: [], total: 0 }
+      const data = responseData.data || responseData;
+      setInvoices(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error fetching invoices:", error);
-      setError(error instanceof Error ? error.message : "Failed to load invoices");
+      setError(
+        error instanceof Error ? error.message : "Failed to load invoices"
+      );
     } finally {
       setLoading(false);
     }
@@ -106,30 +115,37 @@ const Invoices = () => {
     try {
       const res = await fetch(CLIENTS_URL, {
         headers: {
-          "Authorization": `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       });
-      
+
       if (!res.ok) {
         throw new Error(`Error: ${res.status}`);
       }
-      
-      const data = await res.json();
-      setClients(data);
+
+      const responseData = await res.json();
+      // Handle new API response format { data: [], total: 0 }
+      const data = responseData.data || responseData;
+      setClients(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error fetching clients:", error);
     }
   };
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | SelectChangeEvent
+    e:
+      | React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+      | SelectChangeEvent
   ) => {
     const name = e.target.name as string;
     const value = e.target.value;
-    
+
     setForm({
       ...form,
-      [name]: name === "amount" && typeof value === "string" ? parseFloat(value) : value,
+      [name]:
+        name === "amount" && typeof value === "string"
+          ? parseFloat(value)
+          : value,
     });
   };
 
@@ -138,9 +154,9 @@ const Invoices = () => {
     try {
       const response = await fetch(INVOICES_URL, {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(form),
       });
@@ -160,7 +176,9 @@ const Invoices = () => {
       });
     } catch (error) {
       console.error("Error creating invoice:", error);
-      setError(error instanceof Error ? error.message : "Failed to create invoice");
+      setError(
+        error instanceof Error ? error.message : "Failed to create invoice"
+      );
     }
   };
 
@@ -176,13 +194,13 @@ const Invoices = () => {
 
   const handleUpdate = async () => {
     if (!currentInvoice) return;
-    
+
     try {
       const response = await fetch(`${INVOICES_URL}/${currentInvoice.id}`, {
         method: "PUT",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(form),
       });
@@ -202,7 +220,9 @@ const Invoices = () => {
       });
     } catch (error) {
       console.error("Error updating invoice:", error);
-      setError(error instanceof Error ? error.message : "Failed to update invoice");
+      setError(
+        error instanceof Error ? error.message : "Failed to update invoice"
+      );
     }
   };
 
@@ -213,13 +233,13 @@ const Invoices = () => {
 
   const handleDelete = async () => {
     if (!currentInvoice) return;
-    
+
     try {
       const response = await fetch(`${INVOICES_URL}/${currentInvoice.id}`, {
         method: "DELETE",
         headers: {
-          "Authorization": `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       });
 
       if (!response.ok) {
@@ -231,7 +251,9 @@ const Invoices = () => {
       setDeleteOpen(false);
     } catch (error) {
       console.error("Error deleting invoice:", error);
-      setError(error instanceof Error ? error.message : "Failed to delete invoice");
+      setError(
+        error instanceof Error ? error.message : "Failed to delete invoice"
+      );
     }
   };
 
@@ -246,12 +268,11 @@ const Invoices = () => {
         </Paper>
       )}
 
-      <Box sx={{ mb: 2 }}>
+      <Box sx={{ mb: 2, display: "flex", gap: 2, alignItems: "center" }}>
         <Button
           variant="contained"
           color="primary"
           onClick={() => setOpen(true)}
-          sx={{ mr: 2 }}
         >
           New Invoice
         </Button>
@@ -263,16 +284,40 @@ const Invoices = () => {
         >
           Manage Clients
         </Button>
+
+        <TextField
+          label="Search invoices..."
+          variant="outlined"
+          size="small"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          sx={{ flexGrow: 1 }}
+        />
+
+        <FormControl size="small" sx={{ minWidth: 150 }}>
+          <InputLabel>Status Filter</InputLabel>
+          <Select
+            value={statusFilter}
+            label="Status Filter"
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <MenuItem value="all">All Status</MenuItem>
+            <MenuItem value="pending">Pending</MenuItem>
+            <MenuItem value="paid">Paid</MenuItem>
+            <MenuItem value="overdue">Overdue</MenuItem>
+          </Select>
+        </FormControl>
       </Box>
 
       <TableContainer component={Paper}>
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>#</TableCell>
+              <TableCell>Invoice #</TableCell>
               <TableCell>Client</TableCell>
               <TableCell>Amount</TableCell>
               <TableCell>Status</TableCell>
+              <TableCell>Due Date</TableCell>
               <TableCell>Created At</TableCell>
               <TableCell>Actions</TableCell>
             </TableRow>
@@ -280,59 +325,116 @@ const Invoices = () => {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={6} align="center">
+                <TableCell colSpan={7} align="center">
                   Loading...
                 </TableCell>
               </TableRow>
             ) : invoices.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} align="center">
+                <TableCell colSpan={7} align="center">
                   No invoices found
                 </TableCell>
               </TableRow>
             ) : (
-              invoices.map((invoice, index) => (
-                <TableRow 
-                  key={invoice.id}
-                  hover
-                  onClick={() => navigate(`/invoices/${invoice.id}`)}
-                  sx={{ cursor: 'pointer' }}
-                >
-                  <TableCell>{index + 1}</TableCell>
-                  <TableCell>
-                    {invoice.client?.name || 
-                      clients.find(c => c.id === invoice.clientId)?.name || 
-                      invoice.clientId}
-                  </TableCell>
-                  <TableCell>${invoice.amount.toFixed(2)}</TableCell>
-                  <TableCell>{invoice.status}</TableCell>
-                  <TableCell>
-                    {new Date(invoice.createdAt).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell>
-                    <Tooltip title="Edit">
-                      <IconButton 
-                        onClick={(e) => {
-                          e.stopPropagation(); // Prevent row click event
-                          handleEdit(invoice);
+              invoices
+                .filter((invoice) => {
+                  // Filter by status
+                  if (
+                    statusFilter !== "all" &&
+                    invoice.status !== statusFilter
+                  ) {
+                    return false;
+                  }
+
+                  // Filter by search term
+                  if (searchTerm) {
+                    const searchLower = searchTerm.toLowerCase();
+                    const clientName =
+                      invoice.client?.name ||
+                      clients.find((c) => c.id === invoice.clientId)?.name ||
+                      "";
+                    const invoiceNumber = invoice.invoiceNumber || "";
+
+                    return (
+                      clientName.toLowerCase().includes(searchLower) ||
+                      invoiceNumber.toLowerCase().includes(searchLower)
+                    );
+                  }
+
+                  return true;
+                })
+                .map((invoice) => (
+                  <TableRow
+                    key={invoice.id}
+                    hover
+                    onClick={() => navigate(`/invoices/${invoice.id}`)}
+                    sx={{ cursor: "pointer" }}
+                  >
+                    <TableCell>
+                      {invoice.invoiceNumber || invoice.id.substring(0, 8)}
+                    </TableCell>
+                    <TableCell>
+                      {invoice.client?.name ||
+                        clients.find((c) => c.id === invoice.clientId)?.name ||
+                        invoice.clientId}
+                    </TableCell>
+                    <TableCell>${invoice.amount.toFixed(2)}</TableCell>
+                    <TableCell>
+                      <Box
+                        sx={{
+                          px: 1.5,
+                          py: 0.5,
+                          borderRadius: 1,
+                          display: "inline-block",
+                          backgroundColor:
+                            invoice.status === "paid"
+                              ? "#e8f5e9"
+                              : invoice.status === "overdue"
+                              ? "#ffebee"
+                              : "#fff3e0",
+                          color:
+                            invoice.status === "paid"
+                              ? "#2e7d32"
+                              : invoice.status === "overdue"
+                              ? "#c62828"
+                              : "#e65100",
                         }}
                       >
-                        <Edit />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Delete">
-                      <IconButton 
-                        onClick={(e) => {
-                          e.stopPropagation(); // Prevent row click event
-                          handleDeleteConfirm(invoice);
-                        }}
-                      >
-                        <Delete />
-                      </IconButton>
-                    </Tooltip>
-                  </TableCell>
-                </TableRow>
-              ))
+                        {invoice.status.toUpperCase()}
+                      </Box>
+                    </TableCell>
+                    <TableCell>
+                      {invoice.dueDate
+                        ? new Date(invoice.dueDate).toLocaleDateString()
+                        : "-"}
+                    </TableCell>
+                    <TableCell>
+                      {new Date(invoice.createdAt).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>
+                      <Tooltip title="Edit">
+                        <IconButton
+                          onClick={(e) => {
+                            e.stopPropagation(); // Prevent row click event
+                            handleEdit(invoice);
+                          }}
+                        >
+                          <Edit />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Delete">
+                        <IconButton
+                          onClick={(e) => {
+                            e.stopPropagation(); // Prevent row click event
+                            handleDeleteConfirm(invoice);
+                          }}
+                        >
+                          <Delete />
+                        </IconButton>
+                      </Tooltip>
+                    </TableCell>
+                  </TableRow>
+                ))
             )}
           </TableBody>
         </Table>
@@ -352,11 +454,12 @@ const Invoices = () => {
               onChange={handleChange}
               label="Client"
             >
-              {clients.map((client) => (
-                <MenuItem key={client.id} value={client.id}>
-                  {client.name}
-                </MenuItem>
-              ))}
+              {Array.isArray(clients) &&
+                clients.map((client) => (
+                  <MenuItem key={client.id} value={client.id}>
+                    {client.name}
+                  </MenuItem>
+                ))}
             </Select>
           </FormControl>
 
@@ -414,11 +517,12 @@ const Invoices = () => {
               onChange={handleChange}
               label="Client"
             >
-              {clients.map((client) => (
-                <MenuItem key={client.id} value={client.id}>
-                  {client.name}
-                </MenuItem>
-              ))}
+              {Array.isArray(clients) &&
+                clients.map((client) => (
+                  <MenuItem key={client.id} value={client.id}>
+                    {client.name}
+                  </MenuItem>
+                ))}
             </Select>
           </FormControl>
 
@@ -467,22 +571,19 @@ const Invoices = () => {
         <DialogTitle>Confirm Delete</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Are you sure you want to delete this invoice? This action cannot be undone.
+            Are you sure you want to delete this invoice? This action cannot be
+            undone.
           </DialogContentText>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDeleteOpen(false)}>Cancel</Button>
-          <Button 
-            variant="contained" 
-            color="error" 
-            onClick={handleDelete}
-          >
+          <Button variant="contained" color="error" onClick={handleDelete}>
             Delete
           </Button>
         </DialogActions>
       </Dialog>
     </Container>
   );
-}
+};
 
 export default Invoices;

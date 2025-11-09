@@ -32,23 +32,82 @@ async function main() {
             clientId: client.id,
             userId: user.id,
             amount: 1500.00,
-            status: "pending",
+            status: "paid",
             dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
             description: "Website development services"
         }
     });
     console.log("Created invoice:", invoice);
 
-    // Create test payment
-    const payment = await prisma.payment.create({
+    // Create test payments that total to the invoice amount
+    const payment1 = await prisma.payment.create({
         data: {
             invoiceId: invoice.id,
             amount: 500.00,
             method: "bank_transfer",
-            notes: "Initial payment"
+            notes: "First installment payment"
         }
     });
-    console.log("Created payment:", payment);
+    console.log("Created payment 1:", payment1);
+
+    const payment2 = await prisma.payment.create({
+        data: {
+            invoiceId: invoice.id,
+            amount: 500.00,
+            method: "bank_transfer",
+            notes: "Second installment payment"
+        }
+    });
+    console.log("Created payment 2:", payment2);
+
+    const payment3 = await prisma.payment.create({
+        data: {
+            invoiceId: invoice.id,
+            amount: 500.00,
+            method: "cash",
+            notes: "Final payment"
+        }
+    });
+    console.log("Created payment 3:", payment3);
+
+    // Create a pending invoice
+    const invoice2 = await prisma.invoice.create({
+        data: {
+            invoiceNumber: "INV-2025-00002",
+            clientId: client.id,
+            userId: user.id,
+            amount: 2500.00,
+            status: "pending",
+            dueDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000), // 15 days from now
+            description: "Mobile app development"
+        }
+    });
+    console.log("Created pending invoice:", invoice2);
+
+    // Create an overdue invoice
+    const invoice3 = await prisma.invoice.create({
+        data: {
+            invoiceNumber: "INV-2025-00003",
+            clientId: client.id,
+            userId: user.id,
+            amount: 800.00,
+            status: "overdue",
+            dueDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000), // 10 days ago
+            description: "Logo design services"
+        }
+    });
+    console.log("Created overdue invoice:", invoice3);
+
+    // Add partial payment to pending invoice
+    const payment4 = await prisma.payment.create({
+        data: {
+            invoiceId: invoice2.id,
+            amount: 1000.00,
+            method: "credit_card",
+            notes: "Down payment"
+        }
+    });
+    console.log("Created payment 4:", payment4);
 }
 
 main()

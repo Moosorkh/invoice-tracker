@@ -26,12 +26,36 @@ router.post(
 router.get(
   "/",
   asyncHandler(async (req, res) => {
+    const { search, limit, offset } = req.query;
+
+    // Build where clause
+    const where: any = {};
+
+    // Search by name or email
+    if (search && typeof search === "string") {
+      where.OR = [
+        { name: { contains: search, mode: "insensitive" } },
+        { email: { contains: search, mode: "insensitive" } },
+      ];
+    }
+
+    // Parse pagination
+    const take = limit ? parseInt(limit as string) : undefined;
+    const skip = offset ? parseInt(offset as string) : undefined;
+
     const clients = await prisma.client.findMany({
+      where,
       orderBy: {
         updatedAt: "desc",
       },
+      take,
+      skip,
     });
-    res.json(clients);
+
+    // Get total count
+    const total = await prisma.client.count({ where });
+
+    res.json({ data: clients, total });
   })
 );
 

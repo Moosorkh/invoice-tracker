@@ -1,4 +1,11 @@
 {
+  "name": "invoice-tracker",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "cd server && npm run build && cd ../client && npm run build",
+    "start": "cd server && npm start",
+    "install:all": "cd server && npm install && cd ../client && npm install"
+  },
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",

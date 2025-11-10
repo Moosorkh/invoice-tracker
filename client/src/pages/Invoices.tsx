@@ -507,6 +507,25 @@ const Invoices = () => {
       <Dialog open={editOpen} onClose={() => setEditOpen(false)}>
         <DialogTitle>Edit Invoice</DialogTitle>
         <DialogContent>
+          {currentInvoice && currentInvoice.amount !== form.amount && (
+            <Box
+              sx={{
+                p: 2,
+                mb: 2,
+                bgcolor: "#fff3e0",
+                borderRadius: 1,
+                border: "1px solid #ff9800",
+              }}
+            >
+              <Typography variant="body2" color="warning.dark">
+                ⚠️ <strong>Warning:</strong> Changing the invoice amount will
+                automatically recalculate the status based on existing payments.
+                {currentInvoice.amount > form.amount &&
+                  " Reducing the amount may result in an overpayment."}
+              </Typography>
+            </Box>
+          )}
+
           <FormControl fullWidth margin="dense" required>
             <InputLabel id="edit-client-select-label">Client</InputLabel>
             <Select

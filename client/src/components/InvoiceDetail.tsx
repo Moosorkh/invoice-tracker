@@ -28,7 +28,7 @@ import {
   MenuItem,
   SelectChangeEvent,
 } from "@mui/material";
-import { ArrowBack, Payment as PaymentIcon } from "@mui/icons-material";
+import { ArrowBack, Payment as PaymentIcon, Add, Edit, Delete } from "@mui/icons-material";
 import { useAuth } from "../context/AuthContext";
 
 interface Client {
@@ -44,6 +44,15 @@ interface Payment {
   createdAt: string;
 }
 
+interface InvoiceItem {
+  id: string;
+  invoiceId: string;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  amount: number;
+}
+
 interface Invoice {
   id: string;
   clientId: string;
@@ -57,6 +66,7 @@ interface Invoice {
   description?: string;
   client: Client;
   payments: Payment[];
+  items?: InvoiceItem[];
 }
 
 const InvoiceDetail = () => {
@@ -74,6 +84,17 @@ const InvoiceDetail = () => {
     amount: 0,
     method: "credit_card",
   });
+
+  // Line items state
+  const [itemDialogOpen, setItemDialogOpen] = useState(false);
+  const [currentItem, setCurrentItem] = useState<InvoiceItem | null>(null);
+  const [itemForm, setItemForm] = useState({
+    productName: "",
+    quantity: 1,
+    unitPrice: 0,
+  });
+  const [deleteItemOpen, setDeleteItemOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<InvoiceItem | null>(null);
 
   useEffect(() => {
     if (id && token) {
@@ -165,6 +186,108 @@ const InvoiceDetail = () => {
         return "error";
       default:
         return "default";
+    }
+  };
+
+  // Line item handlers
+  const handleItemChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    setItemForm({
+      ...itemForm,
+      [name]:
+        name === "quantity" || name === "unitPrice"
+          ? parseFloat(value) || 0
+          : value,
+    });
+  };
+
+  const handleAddItem = () => {
+    setCurrentItem(null);
+    setItemForm({
+      productName: "",
+      quantity: 1,
+      unitPrice: 0,
+    });
+    setItemDialogOpen(true);
+  };
+
+  const handleEditItem = (item: InvoiceItem) => {
+    setCurrentItem(item);
+    setItemForm({
+      productName: item.productName,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+    });
+    setItemDialogOpen(true);
+  };
+
+  const handleDeleteItemClick = (item: InvoiceItem) => {
+    setItemToDelete(item);
+    setDeleteItemOpen(true);
+  };
+
+  const handleSaveItem = async () => {
+    try {
+      const url = currentItem
+        ? `/api/invoice-items/${currentItem.id}`
+        : `/api/invoice-items`;
+      const method = currentItem ? "PUT" : "POST";
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          ...itemForm,
+          invoiceId: id,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to ${currentItem ? "update" : "add"} item`);
+      }
+
+      fetchInvoiceDetails();
+      setItemDialogOpen(false);
+      setCurrentItem(null);
+      setItemForm({
+        productName: "",
+        quantity: 1,
+        unitPrice: 0,
+      });
+    } catch (error) {
+      console.error("Error saving item:", error);
+      setError(error instanceof Error ? error.message : "Failed to save item");
+    }
+  };
+
+  const handleDeleteItem = async () => {
+    if (!itemToDelete) return;
+
+    try {
+      const response = await fetch(`/api/invoice-items/${itemToDelete.id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete item");
+      }
+
+      fetchInvoiceDetails();
+      setDeleteItemOpen(false);
+      setItemToDelete(null);
+    } catch (error) {
+      console.error("Error deleting item:", error);
+      setError(
+        error instanceof Error ? error.message : "Failed to delete item"
+      );
     }
   };
 
@@ -353,6 +476,95 @@ const InvoiceDetail = () => {
           </Grid>
         </Box>
 
+        {/* Line Items Section */}
+        <Box sx={{ mt: 4 }}>
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              mb: 2,
+            }}
+          >
+            <Typography variant="h6">Line Items</Typography>
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<Add />}
+              onClick={handleAddItem}
+            >
+              Add Item
+            </Button>
+          </Box>
+
+          {!invoice.items || invoice.items.length === 0 ? (
+            <Paper sx={{ p: 3, textAlign: "center", bgcolor: "#f5f5f5" }}>
+              <Typography variant="body2" color="textSecondary">
+                No line items added yet. Click "Add Item" to get started.
+              </Typography>
+            </Paper>
+          ) : (
+            <TableContainer component={Paper} variant="outlined">
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Product/Service</TableCell>
+                    <TableCell align="right">Quantity</TableCell>
+                    <TableCell align="right">Unit Price</TableCell>
+                    <TableCell align="right">Amount</TableCell>
+                    <TableCell align="center">Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {invoice.items.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell>{item.productName}</TableCell>
+                      <TableCell align="right">{item.quantity}</TableCell>
+                      <TableCell align="right">
+                        ${item.unitPrice.toFixed(2)}
+                      </TableCell>
+                      <TableCell align="right">
+                        ${item.amount.toFixed(2)}
+                      </TableCell>
+                      <TableCell align="center">
+                        <Button
+                          size="small"
+                          startIcon={<Edit />}
+                          onClick={() => handleEditItem(item)}
+                          sx={{ mr: 1 }}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          size="small"
+                          color="error"
+                          startIcon={<Delete />}
+                          onClick={() => handleDeleteItemClick(item)}
+                        >
+                          Delete
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  <TableRow>
+                    <TableCell colSpan={3} align="right">
+                      <Typography variant="subtitle1" fontWeight="bold">
+                        Total:
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="right">
+                      <Typography variant="subtitle1" fontWeight="bold">
+                        ${invoice.amount.toFixed(2)}
+                      </Typography>
+                    </TableCell>
+                    <TableCell />
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </Box>
+
         <Box sx={{ mt: 4 }}>
           <Box
             sx={{
@@ -455,6 +667,101 @@ const InvoiceDetail = () => {
             }
           >
             Record Payment
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Add/Edit Line Item Dialog */}
+      <Dialog
+        open={itemDialogOpen}
+        onClose={() => setItemDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          {currentItem ? "Edit Line Item" : "Add Line Item"}
+        </DialogTitle>
+        <DialogContent>
+          <TextField
+            fullWidth
+            label="Product/Service Name"
+            name="productName"
+            value={itemForm.productName}
+            onChange={handleItemChange}
+            margin="dense"
+            required
+          />
+          <TextField
+            fullWidth
+            label="Quantity"
+            type="number"
+            name="quantity"
+            value={itemForm.quantity === 0 ? "" : itemForm.quantity}
+            onChange={handleItemChange}
+            margin="dense"
+            required
+            inputProps={{ min: 1, step: 1 }}
+          />
+          <TextField
+            fullWidth
+            label="Unit Price"
+            type="number"
+            name="unitPrice"
+            value={itemForm.unitPrice === 0 ? "" : itemForm.unitPrice}
+            onChange={handleItemChange}
+            margin="dense"
+            required
+            inputProps={{ min: 0, step: 0.01 }}
+          />
+          <Paper sx={{ p: 2, mt: 2, bgcolor: "#f5f5f5" }}>
+            <Typography variant="subtitle2" color="textSecondary">
+              Calculated Amount:
+            </Typography>
+            <Typography variant="h6">
+              ${(itemForm.quantity * itemForm.unitPrice).toFixed(2)}
+            </Typography>
+          </Paper>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setItemDialogOpen(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleSaveItem}
+            disabled={
+              !itemForm.productName ||
+              itemForm.quantity <= 0 ||
+              itemForm.unitPrice <= 0
+            }
+          >
+            {currentItem ? "Update" : "Add"} Item
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Line Item Confirmation Dialog */}
+      <Dialog
+        open={deleteItemOpen}
+        onClose={() => setDeleteItemOpen(false)}
+      >
+        <DialogTitle>Delete Line Item</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to delete "{itemToDelete?.productName}"?
+          </Typography>
+          <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
+            This action cannot be undone. The invoice total will be updated
+            automatically.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteItemOpen(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleDeleteItem}
+          >
+            Delete
           </Button>
         </DialogActions>
       </Dialog>

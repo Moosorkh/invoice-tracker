@@ -1,0 +1,23 @@
+providers = ["node"]
+
+[phases.setup]
+nixPkgs = ["nodejs_20", "postgresql"]
+
+[phases.install]
+cmds = [
+  "cd server && npm ci",
+  "cd client && npm ci"
+]
+
+[phases.build]
+cmds = [
+  "cd server && npx prisma generate",
+  "cd server && npm run build",
+  "cd client && npm run build"
+]
+
+[start]
+cmd = "cd server && npm run prestart && npm start"
+
+[env]
+NODE_ENV = "production"

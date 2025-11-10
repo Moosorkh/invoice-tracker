@@ -8,7 +8,7 @@ async function main() {
     const hashedPassword = await bcrypt.hash("password123", 10);
     const user = await prisma.user.create({
         data: {
-            email: "user@example.com",
+            email: "admin@example.com",
             password: hashedPassword
         }
     });

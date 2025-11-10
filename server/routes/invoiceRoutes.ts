@@ -129,6 +129,7 @@ router.get(
       include: {
         client: true,
         payments: true,
+        items: true,
       },
     });
 
@@ -148,11 +149,14 @@ router.put(
     const validatedData = updateInvoiceSchema.parse(req.body);
     const userId = req.user.userId;
 
-    // First check if invoice belongs to user
+    // First check if invoice belongs to user and get payments
     const existingInvoice = await prisma.invoice.findFirst({
       where: {
         id,
         userId,
+      },
+      include: {
+        payments: true,
       },
     });
 
@@ -164,10 +168,33 @@ router.put(
 
     if (validatedData.amount !== undefined) {
       updateData.amount = validatedData.amount;
+
+      // Recalculate status based on total payments vs new amount
+      const totalPaid = existingInvoice.payments.reduce(
+        (sum, payment) => sum + payment.amount,
+        0
+      );
+
+      if (totalPaid >= validatedData.amount) {
+        // Fully paid (or overpaid)
+        updateData.status = "paid";
+      } else if (
+        existingInvoice.dueDate &&
+        existingInvoice.dueDate < new Date()
+      ) {
+        // Partially paid but overdue
+        updateData.status = "overdue";
+      } else {
+        // Partially paid or unpaid, not overdue
+        updateData.status = "pending";
+      }
     }
 
     if (validatedData.status) {
-      updateData.status = validatedData.status;
+      // Allow manual status override only if not changing amount
+      if (validatedData.amount === undefined) {
+        updateData.status = validatedData.status;
+      }
     }
 
     if (validatedData.dueDate) {

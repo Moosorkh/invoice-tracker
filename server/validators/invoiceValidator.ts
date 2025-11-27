@@ -1,8 +1,11 @@
 import { z } from "zod";
 
+// Helper to validate decimal values as numbers
+const decimalSchema = z.number().positive("Amount must be positive");
+
 export const createInvoiceSchema = z.object({
   clientId: z.string().uuid("Invalid client ID"),
-  amount: z.number().positive("Amount must be positive"),
+  amount: decimalSchema,
   status: z.enum(["pending", "paid", "overdue", "cancelled"]),
   dueDate: z.string().datetime().optional(),
   description: z.string().optional(),
@@ -10,7 +13,7 @@ export const createInvoiceSchema = z.object({
 
 export const updateInvoiceSchema = z.object({
   clientId: z.string().uuid().optional(),
-  amount: z.number().positive().optional(),
+  amount: decimalSchema.optional(),
   status: z.enum(["pending", "paid", "overdue", "cancelled"]).optional(),
   dueDate: z.string().datetime().optional(),
   description: z.string().optional(),

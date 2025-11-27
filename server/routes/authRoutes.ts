@@ -26,19 +26,48 @@ const registerHandler: RequestHandler = async (req, res, next) => {
     
     const hashedPassword = await bcrypt.hash(validatedData.password, 10);
 
-    const user = await prisma.user.create({
-      data: { 
-        email: validatedData.email, 
-        password: hashedPassword 
-      },
+    // Create user, tenant, and link them in a transaction
+    const result = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: { 
+          email: validatedData.email, 
+          password: hashedPassword 
+        },
+      });
+
+      // Extract company name from email or use default
+      const tenantName = validatedData.companyName || 
+        validatedData.email.split('@')[0].replace(/[^a-zA-Z0-9]/g, ' ').trim() + "'s Company";
+
+      const tenant = await tx.tenant.create({
+        data: {
+          name: tenantName,
+          plan: "free",
+          status: "active",
+        },
+      });
+
+      await tx.userTenant.create({
+        data: {
+          userId: user.id,
+          tenantId: tenant.id,
+          role: "owner",
+        },
+      });
+
+      return { user, tenant };
     });
 
     // Remove password from response
-    const { password, ...userWithoutPassword } = user;
+    const { password, ...userWithoutPassword } = result.user;
     
     res.status(201).json({ 
       message: "User registered successfully",
-      data: userWithoutPassword 
+      data: {
+        ...userWithoutPassword,
+        tenantId: result.tenant.id,
+        tenantName: result.tenant.name,
+      }
     });
   } catch (err) {
     next(err); // Pass error to centralized error handler
@@ -49,20 +78,47 @@ router.post("/register", registerHandler);
 const loginHandler: RequestHandler = async (req, res, next) => {
   try {
     const validatedData = loginSchema.parse(req.body);
-    const user = await prisma.user.findUnique({ where: { email: validatedData.email } });
+    const user = await prisma.user.findUnique({ 
+      where: { email: validatedData.email },
+      include: {
+        tenants: {
+          include: {
+            tenant: true,
+          },
+        },
+      },
+    });
 
     if (!user || !(await bcrypt.compare(validatedData.password, user.password))) {
       res.status(401).json({ error: "Invalid credentials" });
       return;
     }
 
-    const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: "5h" });
+    // Get first tenant (for now, multi-tenant selection will come later)
+    const userTenant = user.tenants[0];
     
-    // Return userId along with token
+    if (!userTenant) {
+      res.status(400).json({ error: "No tenant associated with user" });
+      return;
+    }
+
+    const token = jwt.sign(
+      { 
+        userId: user.id,
+        tenantId: userTenant.tenantId,
+        role: userTenant.role,
+      }, 
+      JWT_SECRET, 
+      { expiresIn: "5h" }
+    );
+    
     res.json({ 
       token, 
       userId: user.id,
-      email: user.email
+      email: user.email,
+      tenantId: userTenant.tenantId,
+      tenantName: userTenant.tenant.name,
+      role: userTenant.role,
     });
   } catch (err) {
     next(err);

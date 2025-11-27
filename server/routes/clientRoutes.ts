@@ -17,7 +17,18 @@ router.post(
   "/",
   asyncHandler(async (req, res) => {
     const validatedData = createClientSchema.parse(req.body);
-    const client = await prisma.client.create({ data: validatedData });
+    const tenantId = req.user!.tenantId;
+
+    if (!tenantId) {
+      return res.status(400).json({ error: "No tenant associated with user" });
+    }
+
+    const client = await prisma.client.create({ 
+      data: {
+        ...validatedData,
+        tenantId,
+      },
+    });
     res.status(201).json(client);
   })
 );
@@ -26,10 +37,15 @@ router.post(
 router.get(
   "/",
   asyncHandler(async (req, res) => {
+    const tenantId = req.user!.tenantId;
     const { search, limit, offset } = req.query;
 
+    if (!tenantId) {
+      return res.status(400).json({ error: "No tenant associated with user" });
+    }
+
     // Build where clause
-    const where: any = {};
+    const where: any = { tenantId };
 
     // Search by name or email
     if (search && typeof search === "string") {
@@ -64,8 +80,14 @@ router.get(
   "/:id",
   asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const client = await prisma.client.findUnique({
-      where: { id },
+    const tenantId = req.user!.tenantId;
+
+    if (!tenantId) {
+      return res.status(400).json({ error: "No tenant associated with user" });
+    }
+
+    const client = await prisma.client.findFirst({
+      where: { id, tenantId },
       include: { invoices: true },
     });
 
@@ -83,6 +105,20 @@ router.put(
   asyncHandler(async (req, res) => {
     const { id } = req.params;
     const validatedData = updateClientSchema.parse(req.body);
+    const tenantId = req.user!.tenantId;
+
+    if (!tenantId) {
+      return res.status(400).json({ error: "No tenant associated with user" });
+    }
+
+    // Verify client belongs to tenant
+    const existingClient = await prisma.client.findFirst({
+      where: { id, tenantId },
+    });
+
+    if (!existingClient) {
+      return res.status(404).json({ error: "Client not found" });
+    }
 
     const client = await prisma.client.update({
       where: { id },
@@ -98,6 +134,20 @@ router.delete(
   "/:id",
   asyncHandler(async (req, res) => {
     const { id } = req.params;
+    const tenantId = req.user!.tenantId;
+
+    if (!tenantId) {
+      return res.status(400).json({ error: "No tenant associated with user" });
+    }
+
+    // Verify client belongs to tenant
+    const existingClient = await prisma.client.findFirst({
+      where: { id, tenantId },
+    });
+
+    if (!existingClient) {
+      return res.status(404).json({ error: "Client not found" });
+    }
 
     // With cascade delete, we can now safely delete clients with invoices
     await prisma.client.delete({

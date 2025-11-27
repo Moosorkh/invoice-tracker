@@ -11,35 +11,72 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id                String       @id @default(uuid())
+  name              String
+  plan              String       @default("free") // free, starter, pro, enterprise
+  status            String       @default("active") // active, suspended, canceled
+  billingCustomerId String?      // Stripe customer ID
+  currency          String       @default("USD")
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  users             UserTenant[]
+  clients           Client[]
+  invoices          Invoice[]
 }
 
 model User {
-  id       String    @id @default(uuid())
-  email    String    @unique
-  password String
-  invoices Invoice[]
+  id        String       @id @default(uuid())
+  email     String       @unique
+  password  String
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  tenants   UserTenant[]
+  invoices  Invoice[]
+}
+
+model UserTenant {
+  id        String   @id @default(uuid())
+  userId    String
+  tenantId  String
+  role      String   @default("member") // owner, admin, accountant, viewer
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, tenantId])
+  @@index([userId])
+  @@index([tenantId])
 }
 
 model Client {
   id        String    @id @default(uuid())
+  tenantId  String
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   name      String
-  email     String    @unique
+  email     String
   phone     String?
   address   String?
   invoices  Invoice[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
 }
 
 model Invoice {
   id            String        @id @default(uuid())
-  invoiceNumber String        @unique
+  invoiceNumber String
+  tenantId      String
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   clientId      String
   client        Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
   userId        String
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  amount        Float
+  amount        Decimal       @db.Decimal(19, 4)
   status        String
   dueDate       DateTime?
   description   String?
@@ -47,6 +84,12 @@ model Invoice {
   items         InvoiceItem[]
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
+
+  @@unique([tenantId, invoiceNumber])
+  @@index([tenantId])
+  @@index([clientId])
+  @@index([userId])
+  @@index([status])
 }
 
 model InvoiceItem {
@@ -54,18 +97,22 @@ model InvoiceItem {
   invoiceId   String
   invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   description String
-  quantity    Float
-  unitPrice   Float
-  amount      Float
+  quantity    Decimal  @db.Decimal(19, 4)
+  unitPrice   Decimal  @db.Decimal(19, 4)
+  amount      Decimal  @db.Decimal(19, 4)
   createdAt   DateTime @default(now())
+
+  @@index([invoiceId])
 }
 
 model Payment {
   id        String   @id @default(uuid())
   invoiceId String
   invoice   Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  amount    Float
+  amount    Decimal  @db.Decimal(19, 4)
   method    String
   notes     String?
   createdAt DateTime @default(now())
+
+  @@index([invoiceId])
 }

@@ -13,9 +13,11 @@ const router = express.Router();
 router.use(authMiddleware);
 
 // Helper function to generate invoice number
-async function generateInvoiceNumber(): Promise<string> {
+async function generateInvoiceNumber(tenantId: string): Promise<string> {
   const year = new Date().getFullYear();
-  const count = await prisma.invoice.count();
+  const count = await prisma.invoice.count({
+    where: { tenantId },
+  });
   return `INV-${year}-${String(count + 1).padStart(5, "0")}`;
 }
 
@@ -24,9 +26,23 @@ router.post(
   "/",
   asyncHandler(async (req, res) => {
     const validatedData = createInvoiceSchema.parse(req.body);
-    const userId = req.user.userId;
+    const userId = req.user!.userId;
+    const tenantId = req.user!.tenantId;
 
-    const invoiceNumber = await generateInvoiceNumber();
+    if (!tenantId) {
+      return res.status(400).json({ error: "No tenant associated with user" });
+    }
+
+    // Verify client belongs to same tenant
+    const client = await prisma.client.findFirst({
+      where: { id: validatedData.clientId, tenantId },
+    });
+
+    if (!client) {
+      return res.status(404).json({ error: "Client not found or does not belong to your organization" });
+    }
+
+    const invoiceNumber = await generateInvoiceNumber(tenantId);
 
     const invoice = await prisma.invoice.create({
       data: {
@@ -40,6 +56,9 @@ router.post(
         },
         user: {
           connect: { id: userId },
+        },
+        tenant: {
+          connect: { id: tenantId },
         },
       },
       include: {
@@ -55,11 +74,15 @@ router.post(
 router.get(
   "/",
   asyncHandler(async (req, res) => {
-    const userId = req.user.userId;
+    const tenantId = req.user!.tenantId;
     const { status, search, limit, offset } = req.query;
 
+    if (!tenantId) {
+      return res.status(400).json({ error: "No tenant associated with user" });
+    }
+
     // Build where clause
-    const where: any = { userId };
+    const where: any = { tenantId };
 
     // Filter by status
     if (status && typeof status === "string") {
@@ -119,12 +142,16 @@ router.get(
   "/:id",
   asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const userId = req.user.userId;
+    const tenantId = req.user!.tenantId;
+
+    if (!tenantId) {
+      return res.status(400).json({ error: "No tenant associated with user" });
+    }
 
     const invoice = await prisma.invoice.findFirst({
       where: {
         id,
-        userId, // Ensure user can only access their own invoices
+        tenantId, // Ensure user can only access their tenant's invoices
       },
       include: {
         client: true,
@@ -147,13 +174,17 @@ router.put(
   asyncHandler(async (req, res) => {
     const { id } = req.params;
     const validatedData = updateInvoiceSchema.parse(req.body);
-    const userId = req.user.userId;
+    const tenantId = req.user!.tenantId;
 
-    // First check if invoice belongs to user and get payments
+    if (!tenantId) {
+      return res.status(400).json({ error: "No tenant associated with user" });
+    }
+
+    // First check if invoice belongs to tenant and get payments
     const existingInvoice = await prisma.invoice.findFirst({
       where: {
         id,
-        userId,
+        tenantId,
       },
       include: {
         payments: true,
@@ -171,11 +202,11 @@ router.put(
 
       // Recalculate status based on total payments vs new amount
       const totalPaid = existingInvoice.payments.reduce(
-        (sum, payment) => sum + payment.amount,
-        0
+        (sum, payment) => sum.add(payment.amount),
+        new (prisma as any).Prisma.Decimal(0)
       );
 
-      if (totalPaid >= validatedData.amount) {
+      if (totalPaid.gte(validatedData.amount)) {
         // Fully paid (or overpaid)
         updateData.status = "paid";
       } else if (
@@ -206,6 +237,15 @@ router.put(
     }
 
     if (validatedData.clientId) {
+      // Verify client belongs to same tenant
+      const client = await prisma.client.findFirst({
+        where: { id: validatedData.clientId, tenantId },
+      });
+
+      if (!client) {
+        return res.status(404).json({ error: "Client not found or does not belong to your organization" });
+      }
+
       updateData.client = {
         connect: { id: validatedData.clientId },
       };
@@ -228,13 +268,17 @@ router.delete(
   "/:id",
   asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const userId = req.user.userId;
+    const tenantId = req.user!.tenantId;
 
-    // First check if invoice belongs to user
+    if (!tenantId) {
+      return res.status(400).json({ error: "No tenant associated with user" });
+    }
+
+    // First check if invoice belongs to tenant
     const existingInvoice = await prisma.invoice.findFirst({
       where: {
         id,
-        userId,
+        tenantId,
       },
     });
 

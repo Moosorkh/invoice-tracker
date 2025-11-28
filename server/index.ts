@@ -2,7 +2,9 @@ import express from "express";
 import cors from "cors";
 import path from "path";
 import dotenv from "dotenv";
-import compression from "compression"; // Add this import
+import compression from "compression";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 
 // Import your routes
 import authRoutes from "./routes/authRoutes";
@@ -16,14 +18,36 @@ dotenv.config();
 
 const app = express();
 
-// Fix the compression middleware application
-app.use(compression()); // This should now work
+// Security middleware
+app.use(helmet({
+  contentSecurityPolicy: process.env.NODE_ENV === "production" ? undefined : false,
+}));
 
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  message: "Too many requests from this IP, please try again later.",
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5, // Limit auth attempts
+  message: "Too many login attempts, please try again later.",
+  skipSuccessfulRequests: true,
+});
+
+app.use(compression());
 app.use(cors());
 app.use(express.json());
 
+// Apply general rate limiter to all routes
+app.use("/api/", limiter);
+
 // API Routes
-app.use("/api/auth", authRoutes);
+app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/clients", clientRoutes);
 app.use("/api/invoices", invoiceRoutes);
 app.use("/api/payments", paymentRoutes);

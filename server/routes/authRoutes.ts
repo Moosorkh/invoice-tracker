@@ -129,13 +129,14 @@ router.post("/login", loginHandler);
 // Protected Route - Get Current User Profile
 const meHandler: RequestHandler = async (req, res, next) => {
   try {
+    const userId = req.user!.userId;
     const user = await prisma.user.findUnique({ 
-      where: { id: req.user.userId },
+      where: { id: userId },
       select: {
         id: true,
         email: true,
-        // Remove createdAt field if it doesn't exist in your schema
-        // or use the correct field name from your schema
+        createdAt: true,
+        updatedAt: true,
       }
     });
     

@@ -1,4 +1,5 @@
 import express from "express";
+import { Prisma } from "@prisma/client";
 import { authMiddleware } from "../middleware/authMiddleware";
 import { asyncHandler } from "../utils/routeHandler";
 import { prisma } from "../utils/prisma";
@@ -14,13 +15,17 @@ router.post(
   "/",
   asyncHandler(async (req, res) => {
     const validatedData = createPaymentSchema.parse(req.body);
-    const userId = req.user.userId;
+    const tenantId = req.user!.tenantId;
 
-    // Verify that the invoice belongs to the user
+    if (!tenantId) {
+      return res.status(400).json({ error: "No tenant associated with user" });
+    }
+
+    // Verify that the invoice belongs to the tenant
     const invoice = await prisma.invoice.findFirst({
       where: {
         id: validatedData.invoiceId,
-        userId,
+        tenantId,
       },
     });
 
@@ -34,16 +39,16 @@ router.post(
     });
 
     const totalPaid = existingPayments.reduce(
-      (sum: number, payment: any) => sum + payment.amount,
-      0
+      (sum, payment) => sum.add(payment.amount),
+      new Prisma.Decimal(0)
     );
-    const remainingBalance = invoice.amount - totalPaid;
+    const remainingBalance = new Prisma.Decimal(invoice.amount).sub(totalPaid);
 
     // Ensure payment amount doesn't exceed remaining balance
-    if (validatedData.amount > remainingBalance) {
+    if (new Prisma.Decimal(validatedData.amount).gt(remainingBalance)) {
       return res.status(400).json({
         error: "Payment amount exceeds remaining balance",
-        remainingBalance,
+        remainingBalance: remainingBalance.toNumber(),
       });
     }
 
@@ -59,8 +64,8 @@ router.post(
     });
 
     // Check if invoice is fully paid and update status if needed
-    const newTotalPaid = totalPaid + validatedData.amount;
-    if (newTotalPaid >= invoice.amount && invoice.status !== "paid") {
+    const newTotalPaid = totalPaid.add(validatedData.amount);
+    if (newTotalPaid.gte(invoice.amount) && invoice.status !== "paid") {
       await prisma.invoice.update({
         where: { id: validatedData.invoiceId },
         data: { status: "paid" },
@@ -76,13 +81,17 @@ router.get(
   "/invoice/:invoiceId",
   asyncHandler(async (req, res) => {
     const { invoiceId } = req.params;
-    const userId = req.user.userId;
+    const tenantId = req.user!.tenantId;
 
-    // Verify invoice belongs to user
+    if (!tenantId) {
+      return res.status(400).json({ error: "No tenant associated with user" });
+    }
+
+    // Verify invoice belongs to tenant
     const invoice = await prisma.invoice.findFirst({
       where: {
         id: invoiceId,
-        userId,
+        tenantId,
       },
     });
 
@@ -103,15 +112,19 @@ router.get(
 router.get(
   "/",
   asyncHandler(async (req, res) => {
-    const userId = req.user.userId;
+    const tenantId = req.user!.tenantId;
 
-    // Get all user's invoices
-    const userInvoices = await prisma.invoice.findMany({
-      where: { userId },
+    if (!tenantId) {
+      return res.status(400).json({ error: "No tenant associated with user" });
+    }
+
+    // Get all tenant's invoices
+    const tenantInvoices = await prisma.invoice.findMany({
+      where: { tenantId },
       select: { id: true },
     });
 
-    const invoiceIds = userInvoices.map((invoice) => invoice.id);
+    const invoiceIds = tenantInvoices.map((invoice) => invoice.id);
 
     // Get payments for those invoices
     const payments = await prisma.payment.findMany({
@@ -139,9 +152,13 @@ router.delete(
   "/:id",
   asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const userId = req.user.userId;
+    const tenantId = req.user!.tenantId;
 
-    // Find payment and check if it belongs to user's invoice
+    if (!tenantId) {
+      return res.status(400).json({ error: "No tenant associated with user" });
+    }
+
+    // Find payment and check if it belongs to tenant's invoice
     const payment = await prisma.payment.findUnique({
       where: { id },
       include: {
@@ -153,7 +170,7 @@ router.delete(
       return res.status(404).json({ error: "Payment not found" });
     }
 
-    if (payment.invoice.userId !== userId) {
+    if (payment.invoice.tenantId !== tenantId) {
       return res.status(403).json({ error: "Not authorized" });
     }
 
@@ -167,12 +184,12 @@ router.delete(
     });
 
     const totalRemaining = remainingPayments.reduce(
-      (sum, p) => sum + p.amount,
-      0
+      (sum, p) => sum.add(p.amount),
+      new Prisma.Decimal(0)
     );
 
     if (
-      totalRemaining < payment.invoice.amount &&
+      totalRemaining.lt(payment.invoice.amount) &&
       payment.invoice.status === "paid"
     ) {
       await prisma.invoice.update({

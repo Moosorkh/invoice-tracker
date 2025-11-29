@@ -68,7 +68,6 @@ model Client {
 
   @@unique([tenantId, email])
   @@index([tenantId])
-} @@index([tenantId])
 }
 
 model Invoice {
@@ -108,6 +107,7 @@ model InvoiceItem {
 
   @@index([invoiceId])
 }
+
 model Payment {
   id        String   @id @default(uuid())
   invoiceId String?
@@ -170,5 +170,5 @@ model LoanPaymentSchedule {
   @@index([loanId])
   @@index([dueDate])
   @@index([status])
-} @@index([invoiceId])
 }
+

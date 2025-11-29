@@ -267,6 +267,10 @@ router.delete(
       return res.status(404).json({ error: "Payment not found" });
     }
 
+    if (!payment.invoice) {
+      return res.status(400).json({ error: "Payment is not associated with an invoice" });
+    }
+
     if (payment.invoice.tenantId !== tenantId) {
       return res.status(403).json({ error: "Not authorized" });
     }
@@ -277,7 +281,7 @@ router.delete(
 
     // Update invoice status if needed
     const remainingPayments = await prisma.payment.findMany({
-      where: { invoiceId: payment.invoiceId },
+      where: { invoiceId: payment.invoiceId! },
     });
 
     const totalRemaining = remainingPayments.reduce(
@@ -290,7 +294,7 @@ router.delete(
       payment.invoice.status === "paid"
     ) {
       await prisma.invoice.update({
-        where: { id: payment.invoiceId },
+        where: { id: payment.invoiceId! },
         data: { status: "pending" },
       });
     }

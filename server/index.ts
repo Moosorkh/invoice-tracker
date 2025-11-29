@@ -12,6 +12,7 @@ import clientRoutes from "./routes/clientRoutes";
 import invoiceRoutes from "./routes/invoiceRoutes";
 import paymentRoutes from "./routes/paymentRoutes";
 import invoiceItemRoutes from "./routes/invoiceItemRoutes";
+import loanRoutes from "./routes/loanRoutes";
 import { errorHandler } from "./middleware/errorHandler";
 
 dotenv.config();
@@ -52,6 +53,7 @@ app.use("/api/clients", clientRoutes);
 app.use("/api/invoices", invoiceRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/invoice-items", invoiceItemRoutes);
+app.use("/api/loans", loanRoutes);
 
 // Serve static files from the React app in production
 if (process.env.NODE_ENV === "production") {

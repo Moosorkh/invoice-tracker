@@ -5,6 +5,8 @@ import Navbar from "./components/Navbar";
 import Dashboard from "./pages/Dashboard";
 import Invoices from "./pages/Invoices";
 import InvoiceDetail from "./components/InvoiceDetail";
+import Loans from "./pages/Loans";
+import LoanDetail from "./components/LoanDetail";
 import Clients from "./pages/Clients";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -24,7 +26,9 @@ const App = () => {
           <Route element={<ProtectedRoute />}>
             <Route path="/" element={<Dashboard />} />
             <Route path="/invoices" element={<Invoices />} />
-            <Route path="/invoices/:id" element={<InvoiceDetail />} /> {/* Add this route */}
+            <Route path="/invoices/:id" element={<InvoiceDetail />} />
+            <Route path="/loans" element={<Loans />} />
+            <Route path="/loans/:id" element={<LoanDetail />} />
             <Route path="/clients" element={<Clients />} />
           </Route>
         </Routes>

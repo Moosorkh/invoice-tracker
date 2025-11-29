@@ -26,6 +26,7 @@ model Tenant {
   users             UserTenant[]
   clients           Client[]
   invoices          Invoice[]
+  loans             Loan[]
 }
 
 model User {
@@ -36,6 +37,7 @@ model User {
   updatedAt DateTime     @updatedAt
   tenants   UserTenant[]
   invoices  Invoice[]
+  loans     Loan[]
 }
 
 model UserTenant {
@@ -51,7 +53,6 @@ model UserTenant {
   @@index([userId])
   @@index([tenantId])
 }
-
 model Client {
   id        String    @id @default(uuid())
   tenantId  String
@@ -61,11 +62,13 @@ model Client {
   phone     String?
   address   String?
   invoices  Invoice[]
+  loans     Loan[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
   @@unique([tenantId, email])
   @@index([tenantId])
+} @@index([tenantId])
 }
 
 model Invoice {
@@ -105,15 +108,67 @@ model InvoiceItem {
 
   @@index([invoiceId])
 }
-
 model Payment {
   id        String   @id @default(uuid())
-  invoiceId String
-  invoice   Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  invoiceId String?
+  invoice   Invoice? @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  loanId    String?
+  loan      Loan?    @relation(fields: [loanId], references: [id], onDelete: Cascade)
   amount    Decimal  @db.Decimal(19, 4)
   method    String
   notes     String?
   createdAt DateTime @default(now())
 
   @@index([invoiceId])
+  @@index([loanId])
+}
+
+model Loan {
+  id               String                 @id @default(uuid())
+  loanNumber       String
+  tenantId         String
+  tenant           Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  clientId         String
+  client           Client                 @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  userId           String
+  user             User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  principal        Decimal                @db.Decimal(19, 4)
+  interestRate     Decimal                @db.Decimal(5, 2) // Annual percentage rate
+  termMonths       Int
+  paymentFrequency String                 @default("monthly") // monthly, biweekly, weekly
+  status           String                 @default("active") // active, closed, charged_off, delinquent
+  startDate        DateTime
+  maturityDate     DateTime
+  nextDueDate      DateTime?
+  totalPaid        Decimal                @db.Decimal(19, 4) @default(0)
+  description      String?
+  payments         Payment[]
+  schedule         LoanPaymentSchedule[]
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+
+  @@unique([tenantId, loanNumber])
+  @@index([tenantId])
+  @@index([clientId])
+  @@index([userId])
+  @@index([status])
+}
+
+model LoanPaymentSchedule {
+  id             String   @id @default(uuid())
+  loanId         String
+  loan           Loan     @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  dueDate        DateTime
+  principalDue   Decimal  @db.Decimal(19, 4)
+  interestDue    Decimal  @db.Decimal(19, 4)
+  totalDue       Decimal  @db.Decimal(19, 4)
+  paidPrincipal  Decimal  @db.Decimal(19, 4) @default(0)
+  paidInterest   Decimal  @db.Decimal(19, 4) @default(0)
+  status         String   @default("pending") // pending, paid, partial, overdue
+  createdAt      DateTime @default(now())
+
+  @@index([loanId])
+  @@index([dueDate])
+  @@index([status])
+} @@index([invoiceId])
 }

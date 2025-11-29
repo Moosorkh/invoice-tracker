@@ -16,7 +16,7 @@ const Navbar = () => {
     <AppBar position="static" sx={{ mb: 4 }}>
       <Toolbar>
         <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-          Invoice Tracker
+          Loan Servicing
         </Typography>
         
         {isAuthenticated ? (
@@ -27,6 +27,9 @@ const Navbar = () => {
               </Button>
               <Button color="inherit" component={Link} to="/invoices">
                 Invoices
+              </Button>
+              <Button color="inherit" component={Link} to="/loans">
+                Loans
               </Button>
               <Button color="inherit" component={Link} to="/clients">
                 Clients

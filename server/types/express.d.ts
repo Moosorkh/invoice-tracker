@@ -1,5 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
 
+export interface AuthRequest extends Request {
+  user?: {
+    userId: string;
+    tenantId?: string;
+  };
+}
+
 // Define a global RequestHandler type for async functions
 declare global {
   namespace Express {

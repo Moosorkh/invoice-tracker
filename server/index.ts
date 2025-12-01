@@ -13,6 +13,8 @@ import invoiceRoutes from "./routes/invoiceRoutes";
 import paymentRoutes from "./routes/paymentRoutes";
 import invoiceItemRoutes from "./routes/invoiceItemRoutes";
 import loanRoutes from "./routes/loanRoutes";
+import subscriptionRoutes from "./routes/subscriptionRoutes";
+import webhookRoutes from "./routes/webhookRoutes";
 import { errorHandler } from "./middleware/errorHandler";
 
 dotenv.config();
@@ -42,6 +44,10 @@ const authLimiter = rateLimit({
 
 app.use(compression());
 app.use(cors());
+
+// Webhook routes need raw body for signature verification
+app.use("/api/webhooks", express.raw({ type: "application/json" }), webhookRoutes);
+
 app.use(express.json());
 
 // Apply general rate limiter to all routes
@@ -54,6 +60,7 @@ app.use("/api/invoices", invoiceRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/invoice-items", invoiceItemRoutes);
 app.use("/api/loans", loanRoutes);
+app.use("/api/subscriptions", subscriptionRoutes);
 
 // Serve static files from the React app in production
 if (process.env.NODE_ENV === "production") {

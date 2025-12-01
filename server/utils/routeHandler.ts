@@ -9,6 +9,9 @@ export const asyncHandler = (fn: (req: Request, res: Response, next: NextFunctio
   };
 };
 
+// Alias for consistency with subscription routes
+export const routeHandler = asyncHandler;
+
 /**
  * Create typed request handler for use with Express routes
  */

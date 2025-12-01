@@ -15,18 +15,24 @@ datasource db {
 }
 
 model Tenant {
-  id                String       @id @default(uuid())
+  id                String         @id @default(uuid())
   name              String
-  plan              String       @default("free") // free, starter, pro, enterprise
-  status            String       @default("active") // active, suspended, canceled
-  billingCustomerId String?      // Stripe customer ID
-  currency          String       @default("USD")
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
+  plan              String         @default("free") // free, starter, professional, enterprise
+  status            String         @default("active") // active, suspended, canceled
+  billingCustomerId String?        // Stripe customer ID
+  currency          String         @default("USD")
+  // Plan limits
+  maxClients        Int            @default(10) // free: 10, starter: 50, pro: unlimited
+  maxInvoices       Int            @default(20) // free: 20, starter: 200, pro: unlimited
+  maxLoans          Int            @default(5) // free: 5, starter: 50, pro: unlimited
+  maxUsers          Int            @default(1) // free: 1, starter: 5, pro: unlimited
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
   users             UserTenant[]
   clients           Client[]
   invoices          Invoice[]
   loans             Loan[]
+  subscriptions     Subscription[]
 }
 
 model User {
@@ -172,3 +178,23 @@ model LoanPaymentSchedule {
   @@index([status])
 }
 
+model Subscription {
+  id                   String    @id @default(uuid())
+  tenantId             String
+  tenant               Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  stripeSubscriptionId String?   @unique // Stripe subscription ID
+  stripePriceId        String? // Stripe price ID
+  stripeProductId      String? // Stripe product ID
+  plan                 String // free, starter, professional, enterprise
+  status               String    @default("active") // active, trialing, past_due, canceled, incomplete
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean   @default(false)
+  canceledAt           DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@index([tenantId])
+  @@index([stripeSubscriptionId])
+  @@index([status])
+}

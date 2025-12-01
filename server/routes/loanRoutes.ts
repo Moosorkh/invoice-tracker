@@ -1,6 +1,7 @@
 import express from "express";
 import { Prisma } from "@prisma/client";
 import { authMiddleware } from "../middleware/authMiddleware";
+import { checkLoanLimit } from "../middleware/usageLimits";
 import { asyncHandler } from "../utils/routeHandler";
 import { prisma } from "../utils/prisma";
 import { createLoanSchema, updateLoanSchema } from "../validators/loanValidator";
@@ -73,6 +74,7 @@ function calculateAmortizationSchedule(
 // Create Loan
 router.post(
   "/",
+  checkLoanLimit,
   asyncHandler(async (req, res) => {
     const validatedData = createLoanSchema.parse(req.body);
     const userId = req.user!.userId;

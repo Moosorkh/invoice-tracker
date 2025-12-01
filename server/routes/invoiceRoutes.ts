@@ -1,5 +1,6 @@
 import express from "express";
 import { authMiddleware } from "../middleware/authMiddleware";
+import { checkInvoiceLimit } from "../middleware/usageLimits";
 import { asyncHandler } from "../utils/routeHandler";
 import { prisma } from "../utils/prisma";
 import {
@@ -24,6 +25,7 @@ async function generateInvoiceNumber(tenantId: string): Promise<string> {
 // Create Invoice
 router.post(
   "/",
+  checkInvoiceLimit,
   asyncHandler(async (req, res) => {
     const validatedData = createInvoiceSchema.parse(req.body);
     const userId = req.user!.userId;

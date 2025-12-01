@@ -8,6 +8,7 @@ import InvoiceDetail from "./components/InvoiceDetail";
 import Loans from "./pages/Loans";
 import LoanDetail from "./components/LoanDetail";
 import Clients from "./pages/Clients";
+import Billing from "./pages/Billing";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -30,6 +31,7 @@ const App = () => {
             <Route path="/loans" element={<Loans />} />
             <Route path="/loans/:id" element={<LoanDetail />} />
             <Route path="/clients" element={<Clients />} />
+            <Route path="/billing" element={<Billing />} />
           </Route>
         </Routes>
       </Router>

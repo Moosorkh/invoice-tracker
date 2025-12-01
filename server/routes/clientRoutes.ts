@@ -1,5 +1,6 @@
 import express from "express";
 import { authMiddleware } from "../middleware/authMiddleware";
+import { checkClientLimit } from "../middleware/usageLimits";
 import { asyncHandler } from "../utils/routeHandler";
 import { prisma } from "../utils/prisma";
 import {
@@ -15,6 +16,7 @@ router.use(authMiddleware);
 // Create Client
 router.post(
   "/",
+  checkClientLimit,
   asyncHandler(async (req, res) => {
     const validatedData = createClientSchema.parse(req.body);
     const tenantId = req.user!.tenantId;

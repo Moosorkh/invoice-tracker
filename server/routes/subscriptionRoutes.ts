@@ -1,6 +1,7 @@
 import { Router, Response } from "express";
 import { AuthRequest } from "../types/express";
 import { prisma } from "../utils/prisma";
+import { authMiddleware } from "../middleware/authMiddleware";
 import {
   stripe,
   PLANS,
@@ -15,13 +16,16 @@ import { routeHandler } from "../utils/routeHandler";
 
 const router = Router();
 
+// Apply auth middleware to all routes
+router.use(authMiddleware);
+
 /**
  * Get available plans
  */
 router.get(
   "/plans",
   routeHandler(async (req: AuthRequest, res: Response) => {
-    return res.json({
+    res.json({
       plans: Object.entries(PLANS).map(([key, plan]) => ({
         id: key,
         name: plan.name,
@@ -61,13 +65,14 @@ router.get(
     });
 
     if (!tenant) {
-      return res.status(404).json({ error: "Tenant not found" });
+      res.status(404).json({ error: "Tenant not found" });
+      return;
     }
 
     const currentSubscription = tenant.subscriptions[0] || null;
     const planConfig = PLANS[tenant.plan as keyof typeof PLANS] || PLANS.free;
 
-    return res.json({
+    res.json({
       currentPlan: tenant.plan,
       status: tenant.status,
       subscription: currentSubscription,
@@ -98,20 +103,21 @@ router.post(
     const { plan } = req.body;
 
     if (!plan || !PLANS[plan as keyof typeof PLANS]) {
-      return res.status(400).json({ error: "Invalid plan" });
+      res.status(400).json({ error: "Invalid plan" });
+      return;
     }
 
     if (plan === "free") {
-      return res
-        .status(400)
-        .json({ error: "Cannot create checkout for free plan" });
+      res.status(400).json({ error: "Cannot create checkout for free plan" });
+      return;
     }
 
     const planConfig = PLANS[plan as keyof typeof PLANS];
     if (!planConfig.stripePriceId) {
-      return res.status(400).json({
+      res.status(400).json({
         error: "Stripe price ID not configured for this plan",
       });
+      return;
     }
 
     const tenant = await prisma.tenant.findUnique({
@@ -119,7 +125,8 @@ router.post(
     });
 
     if (!tenant) {
-      return res.status(404).json({ error: "Tenant not found" });
+      res.status(404).json({ error: "Tenant not found" });
+      return;
     }
 
     // Create or get Stripe customer
@@ -137,7 +144,8 @@ router.post(
       });
 
       if (!user) {
-        return res.status(404).json({ error: "Tenant owner not found" });
+        res.status(404).json({ error: "Tenant owner not found" });
+        return;
       }
 
       const customer = await createStripeCustomer(
@@ -163,7 +171,7 @@ router.post(
       `${process.env.FRONTEND_URL}/billing?canceled=true`
     );
 
-    return res.json({ sessionId: session.id, url: session.url });
+    res.json({ sessionId: session.id, url: session.url });
   })
 );
 
@@ -180,9 +188,10 @@ router.post(
     });
 
     if (!tenant || !tenant.billingCustomerId) {
-      return res.status(400).json({
+      res.status(400).json({
         error: "No billing customer found. Please subscribe to a plan first.",
       });
+      return;
     }
 
     const session = await createBillingPortalSession(
@@ -190,7 +199,7 @@ router.post(
       `${process.env.FRONTEND_URL}/billing`
     );
 
-    return res.json({ url: session.url });
+    res.json({ url: session.url });
   })
 );
 
@@ -211,7 +220,8 @@ router.post(
     });
 
     if (!subscription || !subscription.stripeSubscriptionId) {
-      return res.status(404).json({ error: "No active subscription found" });
+      res.status(404).json({ error: "No active subscription found" });
+      return;
     }
 
     const updatedSubscription = await cancelSubscription(
@@ -228,7 +238,7 @@ router.post(
       },
     });
 
-    return res.json({
+    res.json({
       success: true,
       message: immediately
         ? "Subscription canceled immediately"
@@ -254,9 +264,8 @@ router.post(
     });
 
     if (!subscription || !subscription.stripeSubscriptionId) {
-      return res
-        .status(404)
-        .json({ error: "No subscription scheduled for cancellation" });
+      res.status(404).json({ error: "No subscription scheduled for cancellation" });
+      return;
     }
 
     await resumeSubscription(subscription.stripeSubscriptionId);
@@ -269,7 +278,7 @@ router.post(
       },
     });
 
-    return res.json({
+    res.json({
       success: true,
       message: "Subscription resumed successfully",
     });
@@ -286,21 +295,24 @@ router.post(
     const { plan } = req.body;
 
     if (!plan || !PLANS[plan as keyof typeof PLANS]) {
-      return res.status(400).json({ error: "Invalid plan" });
+      res.status(400).json({ error: "Invalid plan" });
+      return;
     }
 
     const planConfig = PLANS[plan as keyof typeof PLANS];
 
     if (plan === "free") {
-      return res.status(400).json({
+      res.status(400).json({
         error: "Please cancel your subscription to downgrade to free plan",
       });
+      return;
     }
 
     if (!planConfig.stripePriceId) {
-      return res.status(400).json({
+      res.status(400).json({
         error: "Stripe price ID not configured for this plan",
       });
+      return;
     }
 
     const subscription = await prisma.subscription.findFirst({
@@ -311,9 +323,10 @@ router.post(
     });
 
     if (!subscription || !subscription.stripeSubscriptionId) {
-      return res.status(404).json({
+      res.status(404).json({
         error: "No active subscription found. Please create a new subscription.",
       });
+      return;
     }
 
     await updateSubscriptionPlan(
@@ -340,7 +353,7 @@ router.post(
       },
     });
 
-    return res.json({
+    res.json({
       success: true,
       message: "Subscription plan updated successfully",
     });

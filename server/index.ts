@@ -64,12 +64,20 @@ app.use("/api/subscriptions", subscriptionRoutes);
 
 // Serve static files from the React app in production
 if (process.env.NODE_ENV === "production") {
-  // Serve static files from client/dist
-  app.use(express.static(path.join(__dirname, "../../client/dist")));
+  // When compiled, __dirname is server/dist
+  // So we need to go: server/dist -> server -> root -> client/dist
+  const clientPath = path.resolve(__dirname, "../../client/dist");
+  
+  console.log(`📂 Attempting to serve static files from: ${clientPath}`);
+  console.log(`📂 __dirname is: ${__dirname}`);
+  
+  app.use(express.static(clientPath));
 
   // For any request that doesn't match an API route, send the React app
   app.get("*", (req, res) => {
-    res.sendFile(path.join(__dirname, "../../client/dist/index.html"));
+    const indexPath = path.join(clientPath, "index.html");
+    console.log(`📄 Attempting to serve index.html from: ${indexPath}`);
+    res.sendFile(indexPath);
   });
 }
 

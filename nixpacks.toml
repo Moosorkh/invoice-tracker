@@ -14,9 +14,10 @@ cmds = [
   "cd server && npx prisma generate",
   "cd server && npm run build",
   "cd client && npm run build",
-  "ls -la",
-  "ls -la client/dist || echo 'client/dist not found'",
-  "ls -la server/dist || echo 'server/dist not found'"
+  "mkdir -p server/dist/client",
+  "cp -r client/dist server/dist/client",
+  "ls -la server/dist/client",
+  "echo 'Build complete'"
 ]
 
 [start]

@@ -4,6 +4,14 @@ const bcrypt = require("bcryptjs");
 const prisma = new PrismaClient();
 
 async function main() {
+    // Only seed in development
+    if (process.env.NODE_ENV === "production") {
+        console.log("⏭️  Skipping seed in production");
+        return;
+    }
+
+    console.log("🌱 Seeding database...");
+
     // Create test user with hashed password
     const hashedPassword = await bcrypt.hash("password123", 10);
     const user = await prisma.user.create({

@@ -43,7 +43,10 @@ const authLimiter = rateLimit({
 });
 
 app.use(compression());
-app.use(cors());
+app.use(cors({
+  origin: process.env.FRONTEND_URL || "http://localhost:5173",
+  credentials: true
+}));
 
 // Webhook routes need raw body for signature verification
 app.use("/api/webhooks", express.raw({ type: "application/json" }), webhookRoutes);
@@ -62,22 +65,10 @@ app.use("/api/invoice-items", invoiceItemRoutes);
 app.use("/api/loans", loanRoutes);
 app.use("/api/subscriptions", subscriptionRoutes);
 
-// Serve static files from the React app in production
-if (process.env.NODE_ENV === "production") {
-  // Client build is copied to server/dist/client during build
-  const clientPath = path.join(__dirname, "client");
-  
-  console.log(`📂 Serving static files from: ${clientPath}`);
-  console.log(`📂 __dirname is: ${__dirname}`);
-  
-  app.use(express.static(clientPath));
-
-  // For any request that doesn't match an API route, send the React app
-  app.get("*", (req, res) => {
-    const indexPath = path.join(clientPath, "index.html");
-    res.sendFile(indexPath);
-  });
-}
+// Health check endpoint
+app.get("/health", (req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
 
 app.use(errorHandler);
 

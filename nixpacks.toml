@@ -5,20 +5,13 @@ nixPkgs = ["nodejs_20", "postgresql"]
 
 [phases.install]
 cmds = [
-  "cd server && npm ci",
-  "cd client && npm ci"
+  "cd server && npm ci"
 ]
 
 [phases.build]
 cmds = [
   "cd server && npx prisma generate",
-  "cd client && npm run build",
-  "cd server && npm run build",
-  "ls -la client/dist || echo 'client/dist not found'",
-  "mkdir -p server/dist/client",
-  "cp -r client/dist/* server/dist/client/",
-  "ls -la server/dist/client",
-  "echo 'Build complete - files copied to server/dist/client'"
+  "cd server && npm run build"
 ]
 
 [start]

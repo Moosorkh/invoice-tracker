@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { TextField, Button, Container, Typography, Box, Alert } from "@mui/material";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { getApiUrl } from "../config/api";
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -23,7 +24,7 @@ const Login = () => {
     setError("");
 
     try {
-      const res = await fetch("/api/auth/login", {
+      const res = await fetch(getApiUrl("/api/auth/login"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),

@@ -43,10 +43,14 @@ const authLimiter = rateLimit({
 });
 
 app.use(compression());
-app.use(cors({
-  origin: process.env.FRONTEND_URL || "http://localhost:5173",
-  credentials: true
-}));
+
+// CORS only needed in development
+if (process.env.NODE_ENV !== "production") {
+  app.use(cors({
+    origin: "http://localhost:5173",
+    credentials: true
+  }));
+}
 
 // Webhook routes need raw body for signature verification
 app.use("/api/webhooks", express.raw({ type: "application/json" }), webhookRoutes);
@@ -69,6 +73,17 @@ app.use("/api/subscriptions", subscriptionRoutes);
 app.get("/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
+
+// Serve static files from client build in production
+if (process.env.NODE_ENV === "production") {
+  const clientPath = path.join(__dirname, "../client/dist");
+  app.use(express.static(clientPath));
+  
+  // Serve index.html for all non-API routes
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(clientPath, "index.html"));
+  });
+}
 
 app.use(errorHandler);
 

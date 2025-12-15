@@ -44,6 +44,11 @@ const authLimiter = rateLimit({
 
 app.use(compression());
 
+// Health check endpoint - must be before all middleware
+app.get("/health", (req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
 // CORS only needed in development
 if (process.env.NODE_ENV !== "production") {
   app.use(cors({
@@ -68,11 +73,6 @@ app.use("/api/payments", paymentRoutes);
 app.use("/api/invoice-items", invoiceItemRoutes);
 app.use("/api/loans", loanRoutes);
 app.use("/api/subscriptions", subscriptionRoutes);
-
-// Health check endpoint
-app.get("/health", (req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
-});
 
 // Serve static files from client build in production
 if (process.env.NODE_ENV === "production") {

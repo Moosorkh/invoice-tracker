@@ -15,7 +15,11 @@ declare global {
   }
 }
 
-const JWT_SECRET = process.env.JWT_SECRET || "defaultsecret";
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+  throw new Error("JWT_SECRET environment variable is required");
+}
 
 export const authMiddleware: RequestHandler = async (req, res, next) => {
   const authHeader = req.headers.authorization;

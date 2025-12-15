@@ -1,13 +1,17 @@
 import { Router, RequestHandler } from "express";
-import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { registerSchema, loginSchema } from "../validators/authValidator";
 import { authMiddleware } from "../middleware/authMiddleware";
+import { prisma } from "../utils/prisma";
 
 const router = Router();
-const prisma = new PrismaClient();
-const JWT_SECRET = process.env.JWT_SECRET || "defaultsecret";
+
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+  throw new Error("JWT_SECRET environment variable is required");
+}
 
 // Register User
 const registerHandler: RequestHandler = async (req, res, next) => {

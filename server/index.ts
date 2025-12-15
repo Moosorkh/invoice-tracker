@@ -76,16 +76,42 @@ app.get("/health", (req, res) => {
 
 // Serve static files from client build in production
 if (process.env.NODE_ENV === "production") {
-  const clientPath = path.join(__dirname, "../client/dist");
+  // Try multiple possible paths for the client build
+  const possiblePaths = [
+    path.join(__dirname, "../client/dist"),
+    path.join(__dirname, "../../client/dist"),
+    path.join(__dirname, "../dist/client")
+  ];
+  
+  let clientPath = possiblePaths[0];
+  const fs = require("fs");
+  
+  for (const testPath of possiblePaths) {
+    if (fs.existsSync(testPath)) {
+      clientPath = testPath;
+      console.log(`✅ Found client dist at: ${clientPath}`);
+      break;
+    }
+  }
+  
   app.use(express.static(clientPath));
   
   // Serve index.html for all non-API routes
   app.get("*", (req, res) => {
-    res.sendFile(path.join(clientPath, "index.html"));
+    const indexPath = path.join(clientPath, "index.html");
+    if (fs.existsSync(indexPath)) {
+      res.sendFile(indexPath);
+    } else {
+      res.status(404).send("Application not found. Please check deployment configuration.");
+    }
   });
 }
 
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📝 Environment: ${process.env.NODE_ENV || "development"}`);
+  console.log(`🔗 Database: ${process.env.DATABASE_URL ? "Connected" : "No DATABASE_URL found"}`);
+});

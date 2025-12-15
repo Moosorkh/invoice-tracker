@@ -12,6 +12,16 @@ async function main() {
 
     console.log("🌱 Seeding database...");
 
+    // First, create a tenant
+    const tenant = await prisma.tenant.create({
+        data: {
+            name: "Default Organization",
+            plan: "free",
+            status: "active"
+        }
+    });
+    console.log("Created tenant:", tenant);
+
     // Create test user with hashed password
     const hashedPassword = await bcrypt.hash("password123", 10);
     const user = await prisma.user.create({
@@ -22,13 +32,24 @@ async function main() {
     });
     console.log("Created user:", user);
 
-    // Create test client
+    // Link user to tenant
+    const userTenant = await prisma.userTenant.create({
+        data: {
+            userId: user.id,
+            tenantId: tenant.id,
+            role: "admin"
+        }
+    });
+    console.log("Linked user to tenant:", userTenant);
+
+    // Create test client (now with tenantId)
     const client = await prisma.client.create({
         data: {
             name: "Test Client",
             email: "client@example.com",
             phone: "+1234567890",
-            address: "123 Main St, City, Country"
+            address: "123 Main St, City, Country",
+            tenantId: tenant.id
         }
     });
     console.log("Created client:", client);
@@ -39,6 +60,7 @@ async function main() {
             invoiceNumber: "INV-2025-00001",
             clientId: client.id,
             userId: user.id,
+            tenantId: tenant.id,
             amount: 1500.00,
             status: "paid",
             dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
@@ -84,6 +106,7 @@ async function main() {
             invoiceNumber: "INV-2025-00002",
             clientId: client.id,
             userId: user.id,
+            tenantId: tenant.id,
             amount: 2500.00,
             status: "pending",
             dueDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000), // 15 days from now
@@ -98,6 +121,7 @@ async function main() {
             invoiceNumber: "INV-2025-00003",
             clientId: client.id,
             userId: user.id,
+            tenantId: tenant.id,
             amount: 800.00,
             status: "overdue",
             dueDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000), // 10 days ago

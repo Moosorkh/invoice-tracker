@@ -21,6 +21,11 @@ model Tenant {
   status            String         @default("active") // active, suspended, canceled
   billingCustomerId String?        // Stripe customer ID
   currency          String         @default("USD")
+  // Plan limits (-1 means unlimited)
+  maxClients        Int            @default(10)
+  maxInvoices       Int            @default(20)
+  maxLoans          Int            @default(5)
+  maxUsers          Int            @default(1)
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
   users             UserTenant[]

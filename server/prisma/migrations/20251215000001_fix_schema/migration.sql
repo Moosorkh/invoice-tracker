@@ -1,0 +1,20 @@
+-- Add tenant limit columns (safe: IF NOT EXISTS via DO blocks)
+DO $$ BEGIN
+  ALTER TABLE "Tenant" ADD COLUMN "maxClients" INTEGER NOT NULL DEFAULT 10;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE "Tenant" ADD COLUMN "maxInvoices" INTEGER NOT NULL DEFAULT 20;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE "Tenant" ADD COLUMN "maxLoans" INTEGER NOT NULL DEFAULT 5;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE "Tenant" ADD COLUMN "maxUsers" INTEGER NOT NULL DEFAULT 1;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;

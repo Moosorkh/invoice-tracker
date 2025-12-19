@@ -1,15 +1,20 @@
 import axios from 'axios';
 
-// Get the API base URL from environment variable or use same-origin for production
-const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+// API base URL: empty string in production (same-origin), localhost in development
+export const API_BASE_URL = import.meta.env.PROD ? '' : 'http://localhost:5000';
+
+// Helper function for fetch API (for backwards compatibility with existing code)
+export const getApiUrl = (path: string): string => {
+  const p = path.startsWith('/') ? path : `/${path}`;
+  return `${API_BASE_URL}${p}`;
+};
 
 // Create axios instance with base configuration
 export const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: API_BASE_URL || undefined,
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: false, // Changed to false for Railway production
 });
 
 // Add auth token to requests if it exists
@@ -21,17 +26,5 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Helper function for fetch API (for backwards compatibility with existing code)
-export const getApiUrl = (path: string): string => {
-  // In production, use same-origin relative paths
-  if (import.meta.env.PROD) {
-    return path;
-  }
-  // In development with Vite, use localhost
-  return `http://localhost:5000${path}`;
-};
-  return path;
-};
-
-export { API_BASE_URL };
+export default api;
 

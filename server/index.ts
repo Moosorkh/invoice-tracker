@@ -21,6 +21,9 @@ dotenv.config();
 
 const app = express();
 
+// Trust proxy - required for Railway/production behind reverse proxy
+app.set("trust proxy", 1);
+
 // Security middleware
 app.use(helmet({
   contentSecurityPolicy: process.env.NODE_ENV === "production" ? undefined : false,

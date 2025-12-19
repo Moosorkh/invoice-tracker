@@ -1,14 +1,7 @@
 import { Response, NextFunction } from "express";
 import { AuthRequest } from "../types/express";
 import { prisma } from "../utils/prisma";
-
-// Plan limits configuration
-const PLAN_LIMITS: Record<string, { maxClients: number; maxInvoices: number; maxLoans: number; maxUsers: number }> = {
-  free: { maxClients: 10, maxInvoices: 20, maxLoans: 5, maxUsers: 1 },
-  starter: { maxClients: 50, maxInvoices: 200, maxLoans: 50, maxUsers: 5 },
-  professional: { maxClients: -1, maxInvoices: -1, maxLoans: -1, maxUsers: -1 }, // unlimited
-  enterprise: { maxClients: -1, maxInvoices: -1, maxLoans: -1, maxUsers: -1 }, // unlimited
-};
+import { PLAN_LIMITS } from "../utils/planLimits";
 
 export async function checkClientLimit(
   req: AuthRequest,

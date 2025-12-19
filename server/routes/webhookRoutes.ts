@@ -155,17 +155,12 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
     },
   });
 
-  // Update tenant plan and limits
-  const planConfig = PLANS[plan as keyof typeof PLANS] || PLANS.free;
+  // Update tenant plan
   await prisma.tenant.update({
     where: { id: tenant.id },
     data: {
       plan,
       status: subscription.status === "active" ? "active" : tenant.status,
-      maxClients: planConfig.limits.maxClients,
-      maxInvoices: planConfig.limits.maxInvoices,
-      maxLoans: planConfig.limits.maxLoans,
-      maxUsers: planConfig.limits.maxUsers,
     },
   });
 }
@@ -196,15 +191,10 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
   });
 
   // Downgrade tenant to free plan
-  const freePlan = PLANS.free;
   await prisma.tenant.update({
     where: { id: existingSubscription.tenantId },
     data: {
       plan: "free",
-      maxClients: freePlan.limits.maxClients,
-      maxInvoices: freePlan.limits.maxInvoices,
-      maxLoans: freePlan.limits.maxLoans,
-      maxUsers: freePlan.limits.maxUsers,
     },
   });
 }

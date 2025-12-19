@@ -82,12 +82,7 @@ router.get(
         loans: tenant._count.loans,
         users: tenant._count.users,
       },
-      limits: {
-        maxClients: tenant.maxClients,
-        maxInvoices: tenant.maxInvoices,
-        maxLoans: tenant.maxLoans,
-        maxUsers: tenant.maxUsers,
-      },
+      limits: planConfig.limits,
       planConfig,
     });
   })

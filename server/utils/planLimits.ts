@@ -6,3 +6,8 @@ export const PLAN_LIMITS = {
 } as const;
 
 export type PlanName = keyof typeof PLAN_LIMITS;
+
+export function getPlanLimits(plan: string) {
+  const key: PlanName = plan in PLAN_LIMITS ? (plan as PlanName) : "free";
+  return PLAN_LIMITS[key];
+}

@@ -1,7 +1,7 @@
 import { Response, NextFunction } from "express";
 import { AuthRequest } from "../types/express";
 import { prisma } from "../utils/prisma";
-import { PLAN_LIMITS } from "../utils/planLimits";
+import { getPlanLimits } from "../utils/planLimits";
 
 export async function checkClientLimit(
   req: AuthRequest,
@@ -25,7 +25,7 @@ export async function checkClientLimit(
     return;
   }
 
-  const limits = PLAN_LIMITS[tenant.plan] || PLAN_LIMITS.free;
+  const limits = getPlanLimits(tenant.plan);
   const maxClients = limits.maxClients;
 
   // -1 means unlimited
@@ -68,7 +68,7 @@ export async function checkInvoiceLimit(
     return;
   }
 
-  const limits = PLAN_LIMITS[tenant.plan] || PLAN_LIMITS.free;
+  const limits = getPlanLimits(tenant.plan);
   const maxInvoices = limits.maxInvoices;
 
   if (maxInvoices !== -1 && tenant._count.invoices >= maxInvoices) {
@@ -110,7 +110,7 @@ export async function checkLoanLimit(
     return;
   }
 
-  const limits = PLAN_LIMITS[tenant.plan] || PLAN_LIMITS.free;
+  const limits = getPlanLimits(tenant.plan);
   const maxLoans = limits.maxLoans;
 
   if (maxLoans !== -1 && tenant._count.loans >= maxLoans) {
@@ -152,7 +152,7 @@ export async function checkUserLimit(
     return;
   }
 
-  const limits = PLAN_LIMITS[tenant.plan] || PLAN_LIMITS.free;
+  const limits = getPlanLimits(tenant.plan);
   const maxUsers = limits.maxUsers;
 
   if (maxUsers !== -1 && tenant._count.users >= maxUsers) {

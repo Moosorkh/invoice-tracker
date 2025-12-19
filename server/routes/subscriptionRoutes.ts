@@ -341,10 +341,6 @@ router.post(
       where: { id: tenantId },
       data: {
         plan,
-        maxClients: planConfig.limits.maxClients,
-        maxInvoices: planConfig.limits.maxInvoices,
-        maxLoans: planConfig.limits.maxLoans,
-        maxUsers: planConfig.limits.maxUsers,
       },
     });
 

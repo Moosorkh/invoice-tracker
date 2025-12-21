@@ -26,6 +26,19 @@ BEGIN
   END IF;
 END $$;
 
+-- Ensure Payment.loanId foreign key exists (runs after Loan is created)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'Payment_loanId_fkey'
+  ) THEN
+    BEGIN
+      ALTER TABLE "Payment" ADD CONSTRAINT "Payment_loanId_fkey"
+        FOREIGN KEY ("loanId") REFERENCES "Loan"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    EXCEPTION WHEN duplicate_object THEN NULL; END;
+  END IF;
+END $$;
+
 -- CreateTable
 DO $$ 
 BEGIN

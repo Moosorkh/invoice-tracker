@@ -6,9 +6,15 @@ END $$;
 
 -- Add foreign key constraint for Payment.loanId
 DO $$ BEGIN
-  ALTER TABLE "Payment" ADD CONSTRAINT "Payment_loanId_fkey" 
-    FOREIGN KEY ("loanId") REFERENCES "Loan"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-EXCEPTION WHEN duplicate_object THEN NULL;
+  -- Add FK only if Loan table exists
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'Loan'
+  ) THEN
+    BEGIN
+      ALTER TABLE "Payment" ADD CONSTRAINT "Payment_loanId_fkey"
+        FOREIGN KEY ("loanId") REFERENCES "Loan"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    EXCEPTION WHEN duplicate_object THEN NULL; END;
+  END IF;
 END $$;
 
 -- Create index for Payment.loanId

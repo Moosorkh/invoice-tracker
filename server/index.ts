@@ -26,7 +26,7 @@ app.set("trust proxy", 1);
 
 // Security middleware
 app.use(helmet({
-  contentSecurityPolicy: process.env.NODE_ENV === "production" ? undefined : false,
+  contentSecurityPolicy: false, // Disable CSP to allow Vite bundled scripts
 }));
 
 // Rate limiting

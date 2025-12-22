@@ -97,7 +97,18 @@ if (process.env.NODE_ENV === "production") {
     }
   }
   
-  app.use(express.static(clientPath));
+  // Set correct MIME types for Vite-generated files
+  app.use(express.static(clientPath, {
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('.js') || filePath.endsWith('.jsx')) {
+        res.setHeader('Content-Type', 'application/javascript; charset=UTF-8');
+      } else if (filePath.endsWith('.mjs')) {
+        res.setHeader('Content-Type', 'application/javascript; charset=UTF-8');
+      } else if (filePath.endsWith('.css')) {
+        res.setHeader('Content-Type', 'text/css; charset=UTF-8');
+      }
+    }
+  }));
   
   // Serve index.html for all non-API routes
   app.get("*", (req, res) => {

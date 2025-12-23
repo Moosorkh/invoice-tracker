@@ -59,7 +59,12 @@ const Dashboard: React.FC = () => {
 
   const { token } = useAuth();
 
-  useEffect(()[invoicesRes, clientsRes, loansRes] = await Promise.all([
+  useEffect(() => {
+    const fetchStats = async () => {
+      if (!token) return;
+
+      try {
+        const [invoicesRes, clientsRes, loansRes] = await Promise.all([
           fetch("/api/invoices", {
             headers: { Authorization: `Bearer ${token}` },
           }),
@@ -124,7 +129,21 @@ const Dashboard: React.FC = () => {
           overdueInvoices,
           paidInvoices,
           activeLoans,
-          closedLoanes: invoices.length,
+          closedLoans,
+        });
+      } catch (error) {
+        console.error("Error fetching dashboard data:", error);
+      }
+    };
+
+    fetchStats();
+  }, [token]);
+
+  return (
+    <Container>
+      <Typography variant="h4" gutterBottom>
+        Dashboard
+      </Typography>
       
       {/* Overview Stats */}
       <Typography variant="h6" sx={{ mt: 3, mb: 2 }}>
@@ -307,26 +326,7 @@ const Dashboard: React.FC = () => {
             </ResponsiveContainer>
           </Paper>
         </Grid>
-      </Grid ]}
-              cx="50%"
-              cy="50%"
-              labelLine={false}
-              label={({ name, percent }: { name: string; percent: number }) =>
-                `${name}: ${(percent * 100).toFixed(0)}%`
-              }
-              outerRadius={100}
-              fill="#8884d8"
-              dataKey="value"
-            >
-              <Cell fill="#4caf50" />
-              <Cell fill="#ff9800" />
-              <Cell fill="#f44336" />
-            </Pie>
-            <Tooltip />
-            <Legend />
-          </PieChart>
-        </ResponsiveContainer>
-      </Paper>
+      </Grid>
     </Container>
   );
 };

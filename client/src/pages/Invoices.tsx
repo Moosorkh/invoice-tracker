@@ -378,7 +378,7 @@ const Invoices = () => {
                         clients.find((c) => c.id === invoice.clientId)?.name ||
                         invoice.clientId}
                     </TableCell>
-                    <TableCell>${invoice.amount.toFixed(2)}</TableCell>
+                    <TableCell>${parseFloat(invoice.amount as any).toFixed(2)}</TableCell>
                     <TableCell>
                       <Box
                         sx={{

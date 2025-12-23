@@ -74,7 +74,7 @@ const Dashboard: React.FC = () => {
         const clients = clientsData.data || [];
 
         const totalAmount = invoices.reduce(
-          (sum, invoice) => sum + invoice.amount,
+          (sum, invoice) => sum + parseFloat(invoice.amount as any),
           0
         );
         const pendingInvoices = invoices.filter(

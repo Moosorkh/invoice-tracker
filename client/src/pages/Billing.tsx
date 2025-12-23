@@ -69,10 +69,10 @@ export default function Billing() {
       const token = localStorage.getItem("token");
       
       const [plansRes, statusRes] = await Promise.all([
-        axios.get("http://localhost:5000/api/subscriptions/plans", {
+        axios.get("/api/subscriptions/plans", {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        axios.get("http://localhost:5000/api/subscriptions/status", {
+        axios.get("/api/subscriptions/status", {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ]);
@@ -100,7 +100,7 @@ export default function Billing() {
       // If already subscribed, change plan
       if (status?.subscription && status.currentPlan !== "free") {
         await axios.post(
-          "http://localhost:5000/api/subscriptions/change-plan",
+          "/api/subscriptions/change-plan",
           { plan: planId },
           { headers: { Authorization: `Bearer ${token}` } }
         );
@@ -109,7 +109,7 @@ export default function Billing() {
       } else {
         // Create new checkout session
         const res = await axios.post(
-          "http://localhost:5000/api/subscriptions/checkout",
+          "/api/subscriptions/checkout",
           { plan: planId },
           { headers: { Authorization: `Bearer ${token}` } }
         );
@@ -132,7 +132,7 @@ export default function Billing() {
       const token = localStorage.getItem("token");
 
       const res = await axios.post(
-        "http://localhost:5000/api/subscriptions/portal",
+        "/api/subscriptions/portal",
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -158,7 +158,7 @@ export default function Billing() {
       const token = localStorage.getItem("token");
 
       await axios.post(
-        "http://localhost:5000/api/subscriptions/cancel",
+        "/api/subscriptions/cancel",
         { immediately: false },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -179,7 +179,7 @@ export default function Billing() {
       const token = localStorage.getItem("token");
 
       await axios.post(
-        "http://localhost:5000/api/subscriptions/resume",
+        "/api/subscriptions/resume",
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );

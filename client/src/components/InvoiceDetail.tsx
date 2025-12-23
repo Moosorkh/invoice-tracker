@@ -428,7 +428,7 @@ const InvoiceDetail = () => {
               Amount
             </Typography>
             <Typography variant="body1" gutterBottom>
-              ${invoice.amount.toFixed(2)}
+              ${parseFloat(invoice.amount as any).toFixed(2)}
             </Typography>
           </Grid>
 
@@ -449,14 +449,14 @@ const InvoiceDetail = () => {
               <Paper sx={{ p: 2, textAlign: "center", bgcolor: "#e3f2fd" }}>
                 <Typography variant="subtitle2">Total Amount</Typography>
                 <Typography variant="h6">
-                  ${invoice.amount.toFixed(2)}
+                  ${parseFloat(invoice.amount as any).toFixed(2)}
                 </Typography>
               </Paper>
             </Grid>
             <Grid item xs={4}>
               <Paper sx={{ p: 2, textAlign: "center", bgcolor: "#e8f5e9" }}>
                 <Typography variant="subtitle2">Paid</Typography>
-                <Typography variant="h6">${totalPaid.toFixed(2)}</Typography>
+                <Typography variant="h6">${parseFloat(totalPaid as any).toFixed(2)}</Typography>
               </Paper>
             </Grid>
             <Grid item xs={4}>
@@ -469,7 +469,7 @@ const InvoiceDetail = () => {
               >
                 <Typography variant="subtitle2">Balance</Typography>
                 <Typography variant="h6">
-                  ${remainingBalance.toFixed(2)}
+                  ${parseFloat(remainingBalance as any).toFixed(2)}
                 </Typography>
               </Paper>
             </Grid>
@@ -521,10 +521,10 @@ const InvoiceDetail = () => {
                       <TableCell>{item.productName}</TableCell>
                       <TableCell align="right">{item.quantity}</TableCell>
                       <TableCell align="right">
-                        ${item.unitPrice.toFixed(2)}
+                        ${parseFloat(item.unitPrice as any).toFixed(2)}
                       </TableCell>
                       <TableCell align="right">
-                        ${item.amount.toFixed(2)}
+                        ${parseFloat(item.amount as any).toFixed(2)}
                       </TableCell>
                       <TableCell align="center">
                         <Button
@@ -554,7 +554,7 @@ const InvoiceDetail = () => {
                     </TableCell>
                     <TableCell align="right">
                       <Typography variant="subtitle1" fontWeight="bold">
-                        ${invoice.amount.toFixed(2)}
+                        ${parseFloat(invoice.amount as any).toFixed(2)}
                       </Typography>
                     </TableCell>
                     <TableCell />
@@ -611,7 +611,7 @@ const InvoiceDetail = () => {
                         {payment.method.replace("_", " ")}
                       </TableCell>
                       <TableCell align="right">
-                        ${payment.amount.toFixed(2)}
+                        ${parseFloat(payment.amount as any).toFixed(2)}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -636,7 +636,7 @@ const InvoiceDetail = () => {
             margin="dense"
             required
             inputProps={{ max: remainingBalance }}
-            helperText={`Maximum payment: $${remainingBalance.toFixed(2)}`}
+            helperText={`Maximum payment: $${parseFloat(remainingBalance as any).toFixed(2)}`}
           />
 
           <FormControl fullWidth margin="dense">

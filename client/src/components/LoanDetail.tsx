@@ -193,8 +193,8 @@ const LoanDetail: React.FC = () => {
             </Typography>
             <Box sx={{ mt: 2 }}>
               <Typography><strong>Client:</strong> {loan.client.name}</Typography>
-              <Typography><strong>Principal:</strong> ${principal.toFixed(2)}</Typography>
-              <Typography><strong>Interest Rate:</strong> {parseFloat(loan.interestRate).toFixed(2)}%</Typography>
+              <Typography><strong>Principal:</strong> ${parseFloat(principal as any).toFixed(2)}</Typography>
+              <Typography><strong>Interest Rate:</strong> {parseFloat(loan.interestRate as any).toFixed(2)}%</Typography>
               <Typography><strong>Term:</strong> {loan.termMonths} months</Typography>
               <Typography><strong>Status:</strong> <Chip label={loan.status.toUpperCase()} size="small" /></Typography>
               <Typography><strong>Start Date:</strong> {new Date(loan.startDate).toLocaleDateString()}</Typography>
@@ -210,8 +210,8 @@ const LoanDetail: React.FC = () => {
               Payment Summary
             </Typography>
             <Box sx={{ mt: 2 }}>
-              <Typography><strong>Total Paid:</strong> ${totalPaid.toFixed(2)}</Typography>
-              <Typography><strong>Remaining Balance:</strong> ${remainingBalance.toFixed(2)}</Typography>
+              <Typography><strong>Total Paid:</strong> ${parseFloat(totalPaid as any).toFixed(2)}</Typography>
+              <Typography><strong>Remaining Balance:</strong> ${parseFloat(remainingBalance as any).toFixed(2)}</Typography>
               <Typography><strong>Next Due Date:</strong> {loan.nextDueDate ? new Date(loan.nextDueDate).toLocaleDateString() : "N/A"}</Typography>
               <Typography><strong>Payments Made:</strong> {loan.payments.length}</Typography>
             </Box>

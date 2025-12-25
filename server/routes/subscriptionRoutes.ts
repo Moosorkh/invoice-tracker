@@ -158,12 +158,17 @@ router.post(
     }
 
     // Create checkout session
+    // Construct base URL from request (works for monorepo deployment)
+    const protocol = req.protocol;
+    const host = req.get("host");
+    const baseUrl = `${protocol}://${host}`;
+    
     const session = await createCheckoutSession(
       customerId,
       planConfig.stripePriceId,
       tenantId!,
-      `${process.env.FRONTEND_URL}/billing?success=true`,
-      `${process.env.FRONTEND_URL}/billing?canceled=true`
+      `${baseUrl}/billing?success=true`,
+      `${baseUrl}/billing?canceled=true`
     );
 
     res.json({ sessionId: session.id, url: session.url });
@@ -189,9 +194,14 @@ router.post(
       return;
     }
 
+    // Construct base URL from request (works for monorepo deployment)
+    const protocol = req.protocol;
+    const host = req.get("host");
+    const baseUrl = `${protocol}://${host}`;
+
     const session = await createBillingPortalSession(
       tenant.billingCustomerId,
-      `${process.env.FRONTEND_URL}/billing`
+      `${baseUrl}/billing`
     );
 
     res.json({ url: session.url });

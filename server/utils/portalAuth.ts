@@ -2,7 +2,7 @@ import crypto from "crypto";
 import { prisma } from "../utils/prisma";
 import jwt from "jsonwebtoken";
 
-const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_SECRET = process.env.JWT_SECRET!;
 const TOKEN_EXPIRY_MINUTES = 15; // Magic link valid for 15 minutes
 
 if (!JWT_SECRET) {

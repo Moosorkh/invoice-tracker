@@ -1,6 +1,7 @@
 import { RequestHandler } from "express";
 import jwt from "jsonwebtoken";
 import { prisma } from "../utils/prisma";
+import { TenantRequest } from "./tenantResolver";
 
 // Extend Express Request interface
 declare global {
@@ -10,6 +11,8 @@ declare global {
         userId: string;
         tenantId?: string;
         role?: string;
+        userType?: "staff" | "client"; // Distinguish staff vs client portal users
+        clientId?: string; // For client portal users
       };
     }
   }
@@ -32,12 +35,21 @@ export const authMiddleware: RequestHandler = async (req, res, next) => {
   try {
     const payload = jwt.verify(token, JWT_SECRET) as any;
     
+    // Validate tenant context if tenant is resolved (from /t/:slug path)
+    const tenantReq = req as TenantRequest;
+    if (tenantReq.tenant && payload.tenantId && tenantReq.tenant.id !== payload.tenantId) {
+      res.status(403).json({ error: "Token does not match tenant context" });
+      return;
+    }
+    
     // If tenantId is in token (after migration), use it
     if (payload.tenantId) {
       req.user = {
         userId: payload.userId,
         tenantId: payload.tenantId,
         role: payload.role,
+        userType: payload.userType || "staff",
+        clientId: payload.clientId,
       };
       next();
       return;

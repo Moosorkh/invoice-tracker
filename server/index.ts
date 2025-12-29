@@ -15,6 +15,10 @@ import invoiceItemRoutes from "./routes/invoiceItemRoutes";
 import loanRoutes from "./routes/loanRoutes";
 import subscriptionRoutes from "./routes/subscriptionRoutes";
 import webhookRoutes from "./routes/webhookRoutes";
+import portalAuthRoutes from "./routes/portalAuthRoutes";
+import portalRoutes from "./routes/portalRoutes";
+import { tenantResolver } from "./middleware/tenantResolver";
+import { staffOnlyMiddleware } from "./middleware/clientPortalAuth";
 import { errorHandler } from "./middleware/errorHandler";
 
 dotenv.config();
@@ -68,8 +72,41 @@ app.use(express.json());
 // Apply general rate limiter to all routes
 app.use("/api/", limiter);
 
-// API Routes
+// ========================================
+// PUBLIC ROUTES (no tenant context)
+// ========================================
+
+// Auth routes are public (but we'll also mount them under tenant for new flow)
 app.use("/api/auth", authLimiter, authRoutes);
+
+// ========================================
+// TENANT-SCOPED ROUTES (/t/:slug/...)
+// ========================================
+
+// Tenant resolver middleware - applies to all /t/:slug routes
+app.use("/t/:slug", tenantResolver);
+
+// Portal auth routes (magic link) - no auth middleware needed
+app.use("/t/:slug/portal/auth", authLimiter, portalAuthRoutes);
+
+// Portal API routes (client portal, requires client auth)
+app.use("/t/:slug/portal/api", portalRoutes);
+
+// Tenant-scoped auth routes (new tenants should use this path)
+app.use("/t/:slug/api/auth", authLimiter, authRoutes);
+
+// Staff-only API routes (requires staff auth, not client portal)
+app.use("/t/:slug/api/clients", staffOnlyMiddleware, clientRoutes);
+app.use("/t/:slug/api/invoices", staffOnlyMiddleware, invoiceRoutes);
+app.use("/t/:slug/api/payments", staffOnlyMiddleware, paymentRoutes);
+app.use("/t/:slug/api/invoice-items", staffOnlyMiddleware, invoiceItemRoutes);
+app.use("/t/:slug/api/loans", staffOnlyMiddleware, loanRoutes);
+app.use("/t/:slug/api/subscriptions", staffOnlyMiddleware, subscriptionRoutes);
+
+// ========================================
+// LEGACY ROUTES (backward compatibility)
+// These will work for existing users without tenant slug in URL
+// ========================================
 app.use("/api/clients", clientRoutes);
 app.use("/api/invoices", invoiceRoutes);
 app.use("/api/payments", paymentRoutes);

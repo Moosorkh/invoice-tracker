@@ -17,6 +17,7 @@ datasource db {
 model Tenant {
   id                String         @id @default(uuid())
   name              String
+  slug              String         @unique // URL-safe tenant identifier (e.g., "acme-loans")
   plan              String         @default("free") // free, starter, professional, enterprise
   status            String         @default("active") // active, suspended, canceled
   billingCustomerId String?        // Stripe customer ID
@@ -28,6 +29,9 @@ model Tenant {
   invoices          Invoice[]
   loans             Loan[]
   subscriptions     Subscription[]
+  clientUsers       ClientUser[]   // Portal users for end-customers
+
+  @@index([slug])
 }
 
 model User {
@@ -55,17 +59,18 @@ model UserTenant {
   @@index([tenantId])
 }
 model Client {
-  id        String    @id @default(uuid())
-  tenantId  String
-  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  name      String
-  email     String
-  phone     String?
-  address   String?
-  invoices  Invoice[]
-  loans     Loan[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id          String       @id @default(uuid())
+  tenantId    String
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name        String
+  email       String
+  phone       String?
+  address     String?
+  invoices    Invoice[]
+  loans       Loan[]
+  portalUsers ClientUser[] // Portal access for this client
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -192,4 +197,38 @@ model Subscription {
   @@index([tenantId])
   @@index([stripeSubscriptionId])
   @@index([status])
+}
+
+// Client portal user - allows end-customers to view their data
+model ClientUser {
+  id        String   @id @default(uuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  clientId  String
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  email     String
+  name      String?
+  status    String   @default("active") // active, suspended, invited
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+  @@index([clientId])
+  @@index([email])
+}
+
+// Magic link / OTP tokens for client portal authentication
+model PortalAuthToken {
+  id        String   @id @default(uuid())
+  email     String
+  tenantId  String
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([token])
+  @@index([email, tenantId])
+  @@index([expiresAt])
 }

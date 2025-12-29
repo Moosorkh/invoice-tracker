@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import { registerSchema, loginSchema } from "../validators/authValidator";
 import { authMiddleware } from "../middleware/authMiddleware";
 import { prisma } from "../utils/prisma";
+import { generateUniqueTenantSlug } from "../utils/slugGenerator";
 
 const router = Router();
 
@@ -43,9 +44,13 @@ const registerHandler: RequestHandler = async (req, res, next) => {
       const tenantName = validatedData.companyName || 
         validatedData.email.split('@')[0].replace(/[^a-zA-Z0-9]/g, ' ').trim() + "'s Company";
 
+      // Generate unique slug for tenant
+      const slug = await generateUniqueTenantSlug(tx, tenantName);
+
       const tenant = await tx.tenant.create({
         data: {
           name: tenantName,
+          slug,
           plan: "free",
           status: "active",
         },
@@ -71,6 +76,7 @@ const registerHandler: RequestHandler = async (req, res, next) => {
         ...userWithoutPassword,
         tenantId: result.tenant.id,
         tenantName: result.tenant.name,
+        tenantSlug: result.tenant.slug,
       }
     });
   } catch (err) {
@@ -111,6 +117,7 @@ const loginHandler: RequestHandler = async (req, res, next) => {
         userId: user.id,
         tenantId: userTenant.tenantId,
         role: userTenant.role,
+        userType: "staff",
       }, 
       JWT_SECRET, 
       { expiresIn: "5h" }
@@ -122,6 +129,7 @@ const loginHandler: RequestHandler = async (req, res, next) => {
       email: user.email,
       tenantId: userTenant.tenantId,
       tenantName: userTenant.tenant.name,
+      tenantSlug: userTenant.tenant.slug,
       role: userTenant.role,
     });
   } catch (err) {

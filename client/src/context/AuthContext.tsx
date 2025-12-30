@@ -3,13 +3,16 @@ import React, { createContext, useState, useEffect, ReactNode } from "react";
 interface User {
   id: string;
   email: string;
+  tenantSlug?: string;
+  tenantName?: string;
 }
 
 interface AuthContextType {
   user: User | null;
   token: string | null;
   loading: boolean;
-  login: (token: string, userData?: { userId: string; email: string }) => void;
+  tenantSlug: string | null;
+  login: (token: string, userData?: { userId: string; email: string; tenantSlug?: string; tenantName?: string }) => void;
   logout: () => void;
   isAuthenticated: boolean;
   checkTokenExpiration: () => boolean;
@@ -19,6 +22,7 @@ const defaultContext: AuthContextType = {
   user: null,
   token: null,
   loading: true,
+  tenantSlug: null,
   login: () => {},
   logout: () => {},
   isAuthenticated: false,
@@ -34,6 +38,7 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [tenantSlug, setTenantSlug] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
    // Function to check if a token is expired
@@ -74,6 +79,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Check if user is logged in when app loads
     const storedToken = localStorage.getItem("token");
     const storedUser = localStorage.getItem("user");
+    const storedSlug = localStorage.getItem("tenantSlug");
 
     if (storedToken) {
       // Check if the stored token is expired
@@ -81,9 +87,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Token is expired, clean up
         localStorage.removeItem("token");
         localStorage.removeItem("user");
+        localStorage.removeItem("tenantSlug");
       } else {
         // Token is valid
         setToken(storedToken);
+        
+        if (storedSlug) {
+          setTenantSlug(storedSlug);
+        }
         
         if (storedUser) {
           try {
@@ -115,17 +126,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return () => clearInterval(interval);
   }, [token]);
 
-  const login = (token: string, userData?: { userId: string; email: string }) => {
+  const login = (token: string, userData?: { userId: string; email: string; tenantSlug?: string; tenantName?: string }) => {
     localStorage.setItem("token", token);
     
     if (userData) {
       // Convert from API response format to our User interface
       const user: User = {
         id: userData.userId,
-        email: userData.email
+        email: userData.email,
+        tenantSlug: userData.tenantSlug,
+        tenantName: userData.tenantName
       };
       localStorage.setItem("user", JSON.stringify(user));
       setUser(user);
+      
+      if (userData.tenantSlug) {
+        localStorage.setItem("tenantSlug", userData.tenantSlug);
+        setTenantSlug(userData.tenantSlug);
+      }
     }
     
     setToken(token);
@@ -134,8 +152,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    localStorage.removeItem("tenantSlug");
     setToken(null);
     setUser(null);
+    setTenantSlug(null);
   };
 
   return (
@@ -144,6 +164,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         user,
         token,
         loading,
+        tenantSlug,
         login,
         logout,
         isAuthenticated: !!token,

@@ -43,8 +43,13 @@ const Login = () => {
         throw new Error(data.error || "Login failed");
       }
 
-      // Set auth state with token and extract user ID from JWT
-      login(data.token, { userId: data.userId, email });
+      // Set auth state with token and extract user data
+      login(data.token, { 
+        userId: data.userId, 
+        email: data.email,
+        tenantSlug: data.tenantSlug,
+        tenantName: data.tenantName
+      });
       
       // Redirect to dashboard
       navigate("/");

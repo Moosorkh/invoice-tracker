@@ -63,7 +63,12 @@ const Register = () => {
       }
 
       // Set auth state
-      login(loginData.token, { id: loginData.userId, email });
+      login(loginData.token, { 
+        userId: loginData.userId, 
+        email: loginData.email,
+        tenantSlug: loginData.tenantSlug,
+        tenantName: loginData.tenantName
+      });
       
       // Redirect to dashboard
       navigate("/");

@@ -11,6 +11,8 @@ import Clients from "./pages/Clients";
 import Billing from "./pages/Billing";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import PortalLogin from "./pages/PortalLogin";
+import PortalDashboard from "./pages/PortalDashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 const App = () => {
@@ -23,7 +25,13 @@ const App = () => {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           
-          {/* Protected routes */}
+          {/* Client portal routes */}
+          <Route path="/t/:tenantSlug/portal/login" element={<PortalLogin />} />
+          <Route element={<ProtectedRoute />}>
+            <Route path="/t/:tenantSlug/portal" element={<PortalDashboard />} />
+          </Route>
+          
+          {/* Protected staff routes */}
           <Route element={<ProtectedRoute />}>
             <Route path="/" element={<Dashboard />} />
             <Route path="/invoices" element={<Invoices />} />

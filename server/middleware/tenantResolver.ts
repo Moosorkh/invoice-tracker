@@ -21,15 +21,13 @@ export async function tenantResolver(
   next: NextFunction
 ) {
   try {
-    // Extract tenant slug from path: /t/:slug/...
-    const pathMatch = req.path.match(/^\/t\/([^\/]+)/);
+    // The slug is in req.params when using router.use("/t/:slug", ...)
+    const slug = req.params.slug;
     
-    if (!pathMatch) {
+    if (!slug) {
       res.status(400).json({ error: "Tenant slug not found in URL" });
       return;
     }
-
-    const slug = pathMatch[1];
 
     // Look up tenant by slug
     const tenant = await prisma.tenant.findUnique({

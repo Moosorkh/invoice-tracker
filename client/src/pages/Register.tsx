@@ -8,6 +8,7 @@ const Register = () => {
     email: "",
     password: "",
     confirmPassword: "",
+    companyName: "",
   });
   const [error, setError] = useState("");
   const navigate = useNavigate();
@@ -20,7 +21,7 @@ const Register = () => {
     }
   }, [token, navigate]);
 
-  const { email, password, confirmPassword } = formData;
+  const { email, password, confirmPassword, companyName } = formData;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -40,7 +41,7 @@ const Register = () => {
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, companyName }),
       });
 
       const data = await res.json();
@@ -85,6 +86,17 @@ const Register = () => {
         </Typography>
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
         <form onSubmit={handleSubmit}>
+          <TextField
+            label="Company Name"
+            type="text"
+            name="companyName"
+            value={companyName}
+            onChange={handleChange}
+            fullWidth
+            margin="normal"
+            required
+            helperText="This will be used to create your unique workspace URL"
+          />
           <TextField
             label="Email"
             type="email"

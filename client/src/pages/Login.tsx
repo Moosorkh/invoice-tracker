@@ -44,6 +44,7 @@ const Login = () => {
       }
 
       // Set auth state with token and extract user data
+      console.log('Login successful, tenant slug:', data.tenantSlug);
       login(data.token, { 
         userId: data.userId, 
         email: data.email,
@@ -52,7 +53,9 @@ const Login = () => {
       });
       
       // Redirect to tenant-scoped dashboard (replace to update URL immediately)
-      navigate(`/t/${data.tenantSlug}/`, { replace: true });
+      const redirectPath = `/t/${data.tenantSlug}/`;
+      console.log('Redirecting to:', redirectPath);
+      navigate(redirectPath, { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     }

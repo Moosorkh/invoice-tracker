@@ -160,6 +160,17 @@ if (process.env.NODE_ENV === "production") {
 
 app.use(errorHandler);
 
+// Global error handlers
+process.on('uncaughtException', (error) => {
+  console.error('💥 UNCAUGHT EXCEPTION:', error);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('💥 UNHANDLED REJECTION at:', promise, 'reason:', reason);
+  process.exit(1);
+});
+
 const PORT = parseInt(process.env.PORT || "5000", 10);
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Server running on port ${PORT}`);

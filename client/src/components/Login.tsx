@@ -30,7 +30,7 @@ export default function Login() {
           userId: data.userId,
           email: data.email
         });
-        navigate("/"); // Redirect to dashboard
+        navigate(`/t/${data.tenantSlug}/`, { replace: true }); // Redirect to dashboard
       } else {
         setError(data.error || "Login failed");
       }

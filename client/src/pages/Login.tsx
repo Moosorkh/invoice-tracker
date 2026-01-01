@@ -51,8 +51,8 @@ const Login = () => {
         tenantName: data.tenantName
       });
       
-      // Redirect to tenant-scoped dashboard
-      navigate(`/t/${data.tenantSlug}/`);
+      // Redirect to tenant-scoped dashboard (replace to update URL immediately)
+      navigate(`/t/${data.tenantSlug}/`, { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     }

@@ -71,8 +71,8 @@ const Register = () => {
         tenantName: loginData.tenantName
       });
       
-      // Redirect to tenant-scoped dashboard
-      navigate(`/t/${loginData.tenantSlug}/`);
+      // Redirect to tenant-scoped dashboard (replace to update URL immediately)
+      navigate(`/t/${loginData.tenantSlug}/`, { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed");
     }

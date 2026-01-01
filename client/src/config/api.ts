@@ -3,9 +3,25 @@ import axios from 'axios';
 // API base URL: empty string in production (same-origin), localhost in development
 export const API_BASE_URL = import.meta.env.PROD ? '' : 'http://localhost:5000';
 
-// Helper function for fetch API (for backwards compatibility with existing code)
-export const getApiUrl = (path: string): string => {
+// Helper function to get tenant slug from localStorage
+const getTenantSlug = (): string | null => {
+  const tenantSlug = localStorage.getItem('tenantSlug');
+  return tenantSlug;
+};
+
+// Helper function for fetch API with tenant-scoped paths
+export const getApiUrl = (path: string, useTenantScope: boolean = true): string => {
   const p = path.startsWith('/') ? path : `/${path}`;
+  
+  // For tenant-scoped API calls, prepend /t/:slug
+  if (useTenantScope && !p.startsWith('/api/auth')) {
+    const tenantSlug = getTenantSlug();
+    if (tenantSlug && !p.includes('/t/')) {
+      // Transform /api/* to /t/:slug/api/*
+      return `${API_BASE_URL}/t/${tenantSlug}${p}`;
+    }
+  }
+  
   return `${API_BASE_URL}${p}`;
 };
 
@@ -17,12 +33,22 @@ export const api = axios.create({
   },
 });
 
-// Add auth token to requests if it exists
+// Add auth token and tenant slug to requests
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  
+  // Transform API paths to be tenant-scoped (except auth endpoints)
+  if (config.url && !config.url.startsWith('/api/auth') && !config.url.includes('/t/')) {
+    const tenantSlug = getTenantSlug();
+    if (tenantSlug) {
+      // Transform /api/* to /t/:slug/api/*
+      config.url = `/t/${tenantSlug}${config.url}`;
+    }
+  }
+  
   return config;
 });
 

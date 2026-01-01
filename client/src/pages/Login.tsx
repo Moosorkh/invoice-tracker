@@ -51,8 +51,8 @@ const Login = () => {
         tenantName: data.tenantName
       });
       
-      // Redirect to dashboard
-      navigate("/");
+      // Redirect to tenant-scoped dashboard
+      navigate(`/t/${data.tenantSlug}/`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     }

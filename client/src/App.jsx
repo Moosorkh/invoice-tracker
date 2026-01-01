@@ -31,7 +31,18 @@ const App = () => {
             <Route path="/t/:tenantSlug/portal" element={<PortalDashboard />} />
           </Route>
           
-          {/* Protected staff routes */}
+          {/* Protected staff routes - tenant-scoped */}
+          <Route element={<ProtectedRoute />}>
+            <Route path="/t/:tenantSlug/" element={<Dashboard />} />
+            <Route path="/t/:tenantSlug/invoices" element={<Invoices />} />
+            <Route path="/t/:tenantSlug/invoices/:id" element={<InvoiceDetail />} />
+            <Route path="/t/:tenantSlug/loans" element={<Loans />} />
+            <Route path="/t/:tenantSlug/loans/:id" element={<LoanDetail />} />
+            <Route path="/t/:tenantSlug/clients" element={<Clients />} />
+            <Route path="/t/:tenantSlug/billing" element={<Billing />} />
+          </Route>
+          
+          {/* Legacy routes (backward compatibility) */}
           <Route element={<ProtectedRoute />}>
             <Route path="/" element={<Dashboard />} />
             <Route path="/invoices" element={<Invoices />} />

@@ -1,5 +1,5 @@
-import React from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import React, { useEffect } from "react";
+import { BrowserRouter as Router, Routes, Route, useNavigate } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import Navbar from "./components/Navbar";
 import Dashboard from "./pages/Dashboard";
@@ -14,6 +14,23 @@ import Register from "./pages/Register";
 import PortalLogin from "./pages/PortalLogin";
 import PortalDashboard from "./pages/PortalDashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
+
+// Redirect root to tenant-scoped URL if tenant exists
+const RootRedirect = () => {
+  const navigate = useNavigate();
+  
+  useEffect(() => {
+    const tenantSlug = localStorage.getItem('tenantSlug');
+    if (tenantSlug) {
+      navigate(`/t/${tenantSlug}/`, { replace: true });
+    } else {
+      // No tenant, redirect to login
+      navigate('/login', { replace: true });
+    }
+  }, [navigate]);
+  
+  return null;
+};
 
 const App = () => {
   return (
@@ -44,7 +61,7 @@ const App = () => {
           
           {/* Legacy routes (backward compatibility) */}
           <Route element={<ProtectedRoute />}>
-            <Route path="/" element={<Dashboard />} />
+            <Route path="/" element={<RootRedirect />} />
             <Route path="/invoices" element={<Invoices />} />
             <Route path="/invoices/:id" element={<InvoiceDetail />} />
             <Route path="/loans" element={<Loans />} />

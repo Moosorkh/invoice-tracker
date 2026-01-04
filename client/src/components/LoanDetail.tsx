@@ -24,7 +24,9 @@ import {
   FormControl,
   InputLabel,
 } from "@mui/material";
-import { useAuth } from "../context/AuthContext";import { getApiUrl } from \"../config/api\";
+import { useAuth } from "../context/AuthContext";
+import { getApiUrl } from "../config/api";
+
 interface Loan {
   id: string;
   loanNumber: string;

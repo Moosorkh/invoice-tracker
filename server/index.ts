@@ -9,6 +9,7 @@ import rateLimit from "express-rate-limit";
 // Import your routes
 import authRoutes from "./routes/authRoutes";
 import clientRoutes from "./routes/clientRoutes";
+import clientUserRoutes from "./routes/clientUserRoutes";
 import invoiceRoutes from "./routes/invoiceRoutes";
 import paymentRoutes from "./routes/paymentRoutes";
 import invoiceItemRoutes from "./routes/invoiceItemRoutes";
@@ -97,6 +98,7 @@ app.use("/t/:slug/api/auth", authLimiter, authRoutes);
 
 // Staff-only API routes (requires staff auth, not client portal)
 app.use("/t/:slug/api/clients", staffOnlyMiddleware, clientRoutes);
+app.use("/t/:slug/api/client-users", staffOnlyMiddleware, clientUserRoutes);
 app.use("/t/:slug/api/invoices", staffOnlyMiddleware, invoiceRoutes);
 app.use("/t/:slug/api/payments", staffOnlyMiddleware, paymentRoutes);
 app.use("/t/:slug/api/invoice-items", staffOnlyMiddleware, invoiceItemRoutes);

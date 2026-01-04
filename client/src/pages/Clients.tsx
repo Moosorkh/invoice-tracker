@@ -29,6 +29,14 @@ interface Client {
   id: string;
   name: string;
   email: string;
+  portalUsers?: { id: string; email: string }[];
+}
+
+interface PortalUserDialogState {
+  open: boolean;
+  clientId: string | null;
+  clientName: string;
+  portalUsers: { id: string; email: string }[];
 }
 
 const Clients = () => {
@@ -40,8 +48,15 @@ const Clients = () => {
   const [form, setForm] = useState({ name: "", email: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const { token } = useAuth(); // Get auth token
+  const { token } = useAuth();
   const [dialogError, setDialogError] = useState<string | null>(null);
+  const [portalDialog, setPortalDialog] = useState<PortalUserDialogState>({
+    open: false,
+    clientId: null,
+    clientName: "",
+    portalUsers: [],
+  });
+  const [portalEmail, setPortalEmail] = useState("");
 
   useEffect(() => {
     if (token) {
@@ -181,6 +196,59 @@ const Clients = () => {
     }
   };
 
+  const handleOpenPortalDialog = async (client: Client) => {
+    try {
+      const res = await fetch(getApiUrl(`/api/client-users/client/${client.id}/portal-users`), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setPortalDialog({
+        open: true,
+        clientId: client.id,
+        clientName: client.name,
+        portalUsers: data.data || [],
+      });
+      setPortalEmail("");
+    } catch (error) {
+      console.error("Error fetching portal users:", error);
+    }
+  };
+
+  const handleCreatePortalUser = async () => {
+    if (!portalEmail || !portalDialog.clientId) return;
+    try {
+      const res = await fetch(getApiUrl(`/api/client-users/client/${portalDialog.clientId}/portal-user`), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ email: portalEmail }),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        alert(error.error || "Failed to create portal user");
+        return;
+      }
+      handleOpenPortalDialog({ id: portalDialog.clientId, name: portalDialog.clientName, email: "" });
+    } catch (error) {
+      console.error("Error creating portal user:", error);
+    }
+  };
+
+  const handleDeletePortalUser = async (portalUserId: string) => {
+    if (!portalDialog.clientId || !confirm("Remove portal access for this user?")) return;
+    try {
+      await fetch(getApiUrl(`/api/client-users/client/${portalDialog.clientId}/portal-user/${portalUserId}`), {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      handleOpenPortalDialog({ id: portalDialog.clientId, name: portalDialog.clientName, email: "" });
+    } catch (error) {
+      console.error("Error deleting portal user:", error);
+    }
+  };
+
   return (
     <Container>
       <Typography variant="h4" gutterBottom>
@@ -208,19 +276,20 @@ const Clients = () => {
               <TableCell>#</TableCell>
               <TableCell>Name</TableCell>
               <TableCell>Email</TableCell>
+              <TableCell>Portal Access</TableCell>
               <TableCell>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={4} align="center">
+                <TableCell colSpan={5} align="center">
                   Loading...
                 </TableCell>
               </TableRow>
             ) : clients.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} align="center">
+                <TableCell colSpan={5} align="center">
                   No clients found
                 </TableCell>
               </TableRow>
@@ -230,6 +299,15 @@ const Clients = () => {
                   <TableCell>{index + 1}</TableCell>
                   <TableCell>{client.name}</TableCell>
                   <TableCell>{client.email}</TableCell>
+                  <TableCell>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={() => handleOpenPortalDialog(client)}
+                    >
+                      Manage
+                    </Button>
+                  </TableCell>
                   <TableCell>
                     <Tooltip title="Edit">
                       <IconButton onClick={() => handleEdit(client)}>
@@ -345,6 +423,61 @@ const Clients = () => {
               Delete
             </Button>
           )}
+        </DialogActions>
+      </Dialog>
+
+      {/* Portal User Management Dialog */}
+      <Dialog open={portalDialog.open} onClose={() => setPortalDialog({ ...portalDialog, open: false })} maxWidth="sm" fullWidth>
+        <DialogTitle>Portal Access - {portalDialog.clientName}</DialogTitle>
+        <DialogContent>
+          <Box sx={{ mb: 2 }}>
+            <TextField
+              label="Email"
+              value={portalEmail}
+              onChange={(e) => setPortalEmail(e.target.value)}
+              fullWidth
+              size="small"
+              sx={{ mr: 1 }}
+            />
+            <Button
+              variant="contained"
+              onClick={handleCreatePortalUser}
+              sx={{ mt: 1 }}
+              disabled={!portalEmail}
+            >
+              Create Portal User
+            </Button>
+          </Box>
+          {portalDialog.portalUsers.length > 0 && (
+            <TableContainer>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Email</TableCell>
+                    <TableCell>Action</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {portalDialog.portalUsers.map((pu) => (
+                    <TableRow key={pu.id}>
+                      <TableCell>{pu.email}</TableCell>
+                      <TableCell>
+                        <IconButton size="small" onClick={() => handleDeletePortalUser(pu.id)}>
+                          <Delete fontSize="small" />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+          {portalDialog.portalUsers.length === 0 && (
+            <Typography color="textSecondary">No portal users yet</Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPortalDialog({ ...portalDialog, open: false })}>Close</Button>
         </DialogActions>
       </Dialog>
     </Container>

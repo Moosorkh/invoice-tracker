@@ -28,9 +28,10 @@ import {
 import { Visibility, Delete } from "@mui/icons-material";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { getApiUrl } from "../config/api";
 
-const LOANS_URL = "/api/loans";
-const CLIENTS_URL = "/api/clients";
+const LOANS_URL = getApiUrl("/api/loans");
+const CLIENTS_URL = getApiUrl("/api/clients");
 
 interface Client {
   id: string;

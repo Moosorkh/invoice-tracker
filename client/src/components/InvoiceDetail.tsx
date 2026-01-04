@@ -30,6 +30,7 @@ import {
 } from "@mui/material";
 import { ArrowBack, Payment as PaymentIcon, Add, Edit, Delete } from "@mui/icons-material";
 import { useAuth } from "../context/AuthContext";
+import { getApiUrl } from "../config/api";
 
 interface Client {
   id: string;
@@ -105,7 +106,7 @@ const InvoiceDetail = () => {
   const fetchInvoiceDetails = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/invoices/${id}`, {
+      const response = await fetch(getApiUrl(`/api/invoices/${id}`), {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -145,7 +146,7 @@ const InvoiceDetail = () => {
 
   const handleAddPayment = async () => {
     try {
-      const response = await fetch(`/api/payments`, {
+      const response = await fetch(getApiUrl(`/api/payments`), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -230,9 +231,11 @@ const InvoiceDetail = () => {
 
   const handleSaveItem = async () => {
     try {
-      const url = currentItem
-        ? `/api/invoice-items/${currentItem.id}`
-        : `/api/invoice-items`;
+      const url = getApiUrl(
+        currentItem
+          ? `/api/invoice-items/${currentItem.id}`
+          : `/api/invoice-items`
+      );
       const method = currentItem ? "PUT" : "POST";
 
       const response = await fetch(url, {
@@ -269,7 +272,7 @@ const InvoiceDetail = () => {
     if (!itemToDelete) return;
 
     try {
-      const response = await fetch(`/api/invoice-items/${itemToDelete.id}`, {
+      const response = await fetch(getApiUrl(`/api/invoice-items/${itemToDelete.id}`), {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,

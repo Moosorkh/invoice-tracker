@@ -24,8 +24,7 @@ import {
   FormControl,
   InputLabel,
 } from "@mui/material";
-import { useAuth } from "../context/AuthContext";
-
+import { useAuth } from "../context/AuthContext";import { getApiUrl } from \"../config/api\";
 interface Loan {
   id: string;
   loanNumber: string;
@@ -85,7 +84,7 @@ const LoanDetail: React.FC = () => {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(`/api/loans/${id}`, {
+      const res = await fetch(getApiUrl(`/api/loans/${id}`), {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -109,7 +108,7 @@ const LoanDetail: React.FC = () => {
     if (!loan) return;
 
     try {
-      const response = await fetch("/api/payments", {
+      const response = await fetch(getApiUrl("/api/payments"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

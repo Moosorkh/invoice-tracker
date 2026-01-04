@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Container, Typography, Grid, Paper, Box } from "@mui/material";
 import { useAuth } from "../context/AuthContext";
+import { getApiUrl } from "../config/api";
 import {
   PieChart,
   Pie,
@@ -65,13 +66,13 @@ const Dashboard: React.FC = () => {
 
       try {
         const [invoicesRes, clientsRes, loansRes] = await Promise.all([
-          fetch("/api/invoices", {
+          fetch(getApiUrl("/api/invoices"), {
             headers: { Authorization: `Bearer ${token}` },
           }),
-          fetch("/api/clients", {
+          fetch(getApiUrl("/api/clients"), {
             headers: { Authorization: `Bearer ${token}` },
           }),
-          fetch("/api/loans", {
+          fetch(getApiUrl("/api/loans"), {
             headers: { Authorization: `Bearer ${token}` },
           }),
         ]);

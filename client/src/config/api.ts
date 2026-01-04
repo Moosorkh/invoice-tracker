@@ -10,16 +10,25 @@ const getTenantSlug = (): string | null => {
 };
 
 // Helper function for fetch API with tenant-scoped paths
-export const getApiUrl = (path: string, useTenantScope: boolean = true): string => {
+// Use this for ALL fetch() calls to ensure proper tenant scoping
+export const getApiUrl = (path: string): string => {
   const p = path.startsWith('/') ? path : `/${path}`;
   
-  // For tenant-scoped API calls, prepend /t/:slug
-  if (useTenantScope && !p.startsWith('/api/auth')) {
-    const tenantSlug = getTenantSlug();
-    if (tenantSlug && !p.includes('/t/')) {
-      // Transform /api/* to /t/:slug/api/*
-      return `${API_BASE_URL}/t/${tenantSlug}${p}`;
-    }
+  // Don't scope auth endpoints (no tenant known yet)
+  if (p.startsWith('/api/auth')) {
+    return `${API_BASE_URL}${p}`;
+  }
+  
+  // Don't scope portal endpoints (they already have /t/:slug in the path)
+  if (p.includes('/portal/')) {
+    return `${API_BASE_URL}${p}`;
+  }
+  
+  // For all other API calls, prepend tenant slug
+  const tenantSlug = getTenantSlug();
+  if (tenantSlug && !p.includes('/t/')) {
+    // Transform /api/* to /t/:slug/api/*
+    return `${API_BASE_URL}/t/${tenantSlug}${p}`;
   }
   
   return `${API_BASE_URL}${p}`;

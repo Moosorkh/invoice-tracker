@@ -28,10 +28,11 @@ import {
 import { Edit, Delete } from "@mui/icons-material";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { getApiUrl } from "../config/api";
 
 // API URLs
-const INVOICES_URL = "/api/invoices";
-const CLIENTS_URL = "/api/clients";
+const INVOICES_URL = getApiUrl("/api/invoices");
+const CLIENTS_URL = getApiUrl("/api/clients");
 
 interface Client {
   id: string;

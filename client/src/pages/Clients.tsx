@@ -20,9 +20,10 @@ import {
   DialogContentText,
 } from "@mui/material";
 import { Edit, Delete } from "@mui/icons-material";
-import { useAuth } from "../context/AuthContext"; // Import your auth context
+import { useAuth } from "../context/AuthContext";
+import { getApiUrl } from "../config/api";
 
-const API_URL = "/api/clients";
+const API_URL = getApiUrl("/api/clients");
 
 interface Client {
   id: string;

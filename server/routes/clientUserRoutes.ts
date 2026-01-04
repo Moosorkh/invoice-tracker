@@ -1,7 +1,7 @@
-import { Router } from "express";
+import { Router, Request, Response } from "express";
 import { prisma } from "../utils/prisma";
 import { authMiddleware } from "../middleware/authMiddleware";
-import { generateMagicLinkToken } from "../utils/portalAuth";
+import { generatePortalAuthToken } from "../utils/portalAuth";
 
 const router = Router();
 
@@ -69,7 +69,7 @@ router.post("/client/:clientId/portal-user", authMiddleware, async (req, res) =>
     });
 
     // Generate magic link token
-    const token = await generateMagicLinkToken(portalUser.id, tenantId);
+    const token = await generatePortalAuthToken(email, tenantId);
     
     // TODO: Send email with magic link
     // For now, return the token in response

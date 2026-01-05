@@ -23,8 +23,6 @@ import { Edit, Delete } from "@mui/icons-material";
 import { useAuth } from "../context/AuthContext";
 import { getApiUrl } from "../config/api";
 
-const API_URL = getApiUrl("/api/clients");
-
 interface Client {
   id: string;
   name: string;
@@ -68,7 +66,7 @@ const Clients = () => {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(API_URL, {
+      const res = await fetch(getApiUrl("/api/clients"), {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -101,7 +99,7 @@ const Clients = () => {
   const handleSubmit = async () => {
     setError("");
     try {
-      const response = await fetch(API_URL, {
+      const response = await fetch(getApiUrl("/api/clients"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -137,7 +135,7 @@ const Clients = () => {
     if (!currentClient) return;
 
     try {
-      const response = await fetch(`${API_URL}/${currentClient.id}`, {
+      const response = await fetch(getApiUrl(`/api/clients/${currentClient.id}`), {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -172,7 +170,7 @@ const Clients = () => {
     if (!currentClient) return;
 
     try {
-      const response = await fetch(`${API_URL}/${currentClient.id}`, {
+      const response = await fetch(getApiUrl(`/api/clients/${currentClient.id}`), {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,

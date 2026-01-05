@@ -30,10 +30,6 @@ import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { getApiUrl } from "../config/api";
 
-// API URLs
-const INVOICES_URL = getApiUrl("/api/invoices");
-const CLIENTS_URL = getApiUrl("/api/clients");
-
 interface Client {
   id: string;
   name: string;
@@ -85,7 +81,7 @@ const Invoices = () => {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(INVOICES_URL, {
+      const res = await fetch(getApiUrl("/api/invoices"), {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -114,7 +110,7 @@ const Invoices = () => {
 
   const fetchClients = async () => {
     try {
-      const res = await fetch(CLIENTS_URL, {
+      const res = await fetch(getApiUrl("/api/clients"), {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -153,7 +149,7 @@ const Invoices = () => {
   const handleSubmit = async () => {
     setError("");
     try {
-      const response = await fetch(INVOICES_URL, {
+      const response = await fetch(getApiUrl("/api/invoices"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -197,7 +193,7 @@ const Invoices = () => {
     if (!currentInvoice) return;
 
     try {
-      const response = await fetch(`${INVOICES_URL}/${currentInvoice.id}`, {
+      const response = await fetch(getApiUrl(`/api/invoices/${currentInvoice.id}`), {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -236,7 +232,7 @@ const Invoices = () => {
     if (!currentInvoice) return;
 
     try {
-      const response = await fetch(`${INVOICES_URL}/${currentInvoice.id}`, {
+      const response = await fetch(getApiUrl(`/api/invoices/${currentInvoice.id}`), {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,

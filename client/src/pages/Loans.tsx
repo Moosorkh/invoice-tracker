@@ -30,9 +30,6 @@ import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { getApiUrl } from "../config/api";
 
-const LOANS_URL = getApiUrl("/api/loans");
-const CLIENTS_URL = getApiUrl("/api/clients");
-
 interface Client {
   id: string;
   name: string;
@@ -85,7 +82,7 @@ const Loans: React.FC = () => {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(LOANS_URL, {
+      const res = await fetch(getApiUrl("/api/loans"), {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -108,7 +105,7 @@ const Loans: React.FC = () => {
 
   const fetchClients = async () => {
     try {
-      const res = await fetch(CLIENTS_URL, {
+      const res = await fetch(getApiUrl("/api/clients"), {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -147,7 +144,7 @@ const Loans: React.FC = () => {
       const startDate = new Date(form.startDate);
       startDate.setHours(12, 0, 0, 0);
 
-      const response = await fetch(LOANS_URL, {
+      const response = await fetch(getApiUrl("/api/loans"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -187,7 +184,7 @@ const Loans: React.FC = () => {
     if (!window.confirm("Are you sure you want to delete this loan?")) return;
 
     try {
-      const response = await fetch(`${LOANS_URL}/${id}`, {
+      const response = await fetch(getApiUrl(`/api/loans/${id}`), {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });

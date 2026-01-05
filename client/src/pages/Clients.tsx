@@ -18,6 +18,7 @@ import {
   IconButton,
   Tooltip,
   DialogContentText,
+  Box,
 } from "@mui/material";
 import { Edit, Delete } from "@mui/icons-material";
 import { useAuth } from "../context/AuthContext";

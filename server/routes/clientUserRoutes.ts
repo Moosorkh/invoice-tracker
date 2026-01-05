@@ -9,7 +9,12 @@ const router = Router();
 router.get("/client/:clientId/portal-users", authMiddleware, async (req, res) => {
   try {
     const { clientId } = req.params;
-    const tenantId = req.user!.tenantId;
+    const tenantId = req.user?.tenantId;
+
+    if (!tenantId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
 
     // Verify client belongs to tenant
     const client = await prisma.client.findFirst({
@@ -38,7 +43,12 @@ router.post("/client/:clientId/portal-user", authMiddleware, async (req, res) =>
   try {
     const { clientId } = req.params;
     const { email } = req.body;
-    const tenantId = req.user!.tenantId;
+    const tenantId = req.user?.tenantId;
+
+    if (!tenantId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
 
     // Verify client belongs to tenant
     const client = await prisma.client.findFirst({
@@ -94,7 +104,12 @@ router.post("/client/:clientId/portal-user", authMiddleware, async (req, res) =>
 router.delete("/client/:clientId/portal-user/:portalUserId", authMiddleware, async (req, res) => {
   try {
     const { clientId, portalUserId } = req.params;
-    const tenantId = req.user!.tenantId;
+    const tenantId = req.user?.tenantId;
+
+    if (!tenantId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
 
     // Verify portal user exists and belongs to tenant
     const portalUser = await prisma.clientUser.findFirst({

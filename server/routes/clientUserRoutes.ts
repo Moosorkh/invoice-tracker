@@ -17,7 +17,8 @@ router.get("/client/:clientId/portal-users", authMiddleware, async (req, res) =>
     });
 
     if (!client) {
-      return res.status(404).json({ error: "Client not found" });
+      res.status(404).json({ error: "Client not found" });
+      return;
     }
 
     const portalUsers = await prisma.clientUser.findMany({
@@ -45,7 +46,8 @@ router.post("/client/:clientId/portal-user", authMiddleware, async (req, res) =>
     });
 
     if (!client) {
-      return res.status(404).json({ error: "Client not found" });
+      res.status(404).json({ error: "Client not found" });
+      return;
     }
 
     // Check if portal user already exists
@@ -56,7 +58,8 @@ router.post("/client/:clientId/portal-user", authMiddleware, async (req, res) =>
     });
 
     if (existing) {
-      return res.status(400).json({ error: "Portal user already exists with this email" });
+      res.status(400).json({ error: "Portal user already exists with this email" });
+      return;
     }
 
     // Create portal user
@@ -103,7 +106,8 @@ router.delete("/client/:clientId/portal-user/:portalUserId", authMiddleware, asy
     });
 
     if (!portalUser) {
-      return res.status(404).json({ error: "Portal user not found" });
+      res.status(404).json({ error: "Portal user not found" });
+      return;
     }
 
     await prisma.clientUser.delete({

@@ -17,7 +17,7 @@ router.use(authMiddleware);
 async function generateInvoiceNumber(tenantId: string): Promise<string> {
   const year = new Date().getFullYear();
   const count = await prisma.invoice.count({
-    where: { tenantId },
+    where: { tenantId, invoiceNumber: { startsWith: `INV-${year}-` } },
   });
   return `INV-${year}-${String(count + 1).padStart(5, "0")}`;
 }
@@ -44,29 +44,46 @@ router.post(
       return res.status(404).json({ error: "Client not found or does not belong to your organization" });
     }
 
-    const invoiceNumber = await generateInvoiceNumber(tenantId);
+    // Retry logic for invoice number generation (handles race conditions)
+    let invoice;
+    let retries = 3;
+    
+    while (retries > 0) {
+      try {
+        const invoiceNumber = await generateInvoiceNumber(tenantId);
 
-    const invoice = await prisma.invoice.create({
-      data: {
-        invoiceNumber,
-        amount: validatedData.amount,
-        status: validatedData.status,
-        dueDate: validatedData.dueDate ? new Date(validatedData.dueDate) : null,
-        description: validatedData.description,
-        client: {
-          connect: { id: validatedData.clientId },
-        },
-        user: {
-          connect: { id: userId },
-        },
-        tenant: {
-          connect: { id: tenantId },
-        },
-      },
-      include: {
-        client: true,
-      },
-    });
+        invoice = await prisma.invoice.create({
+          data: {
+            invoiceNumber,
+            amount: validatedData.amount,
+            status: validatedData.status,
+            dueDate: validatedData.dueDate ? new Date(validatedData.dueDate) : null,
+            description: validatedData.description,
+            client: {
+              connect: { id: validatedData.clientId },
+            },
+            user: {
+              connect: { id: userId },
+            },
+            tenant: {
+              connect: { id: tenantId },
+            },
+          },
+          include: {
+            client: true,
+          },
+        });
+        break; // Success, exit loop
+      } catch (error: any) {
+        if (error.code === 'P2002' && retries > 1) {
+          // Unique constraint violation, retry
+          retries--;
+          await new Promise(resolve => setTimeout(resolve, 100)); // Brief delay
+          continue;
+        }
+        throw error; // Re-throw if not a duplicate or out of retries
+      }
+    }
 
     res.status(201).json(invoice);
   })

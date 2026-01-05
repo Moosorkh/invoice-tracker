@@ -57,6 +57,7 @@ const Clients = () => {
   const [portalEmail, setPortalEmail] = useState("");
 
   useEffect(() => {
+    console.log('Clients component mounted, token:', !!token);
     if (token) {
       fetchClients();
     }
@@ -66,17 +67,24 @@ const Clients = () => {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(getApiUrl("/api/clients"), {
+      const url = getApiUrl("/api/clients");
+      console.log('Fetching clients from:', url);
+      const res = await fetch(url, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
 
+      console.log('Response status:', res.status);
+      
       if (!res.ok) {
-        throw new Error(`Status: ${res.status}`);
+        const errorText = await res.text();
+        console.error('Error response:', errorText);
+        throw new Error(`Status: ${res.status} - ${errorText}`);
       }
 
       const responseData = await res.json();
+      console.log('Received data:', responseData);
       // Handle new API response format { data: [], total: 0 }
       const data = responseData.data || responseData;
       setClients(Array.isArray(data) ? data : []);
@@ -246,6 +254,8 @@ const Clients = () => {
       console.error("Error deleting portal user:", error);
     }
   };
+
+  console.log('Clients component render - loading:', loading, 'error:', error, 'clients:', clients.length);
 
   return (
     <Container>

@@ -16,26 +16,34 @@ router.use(authMiddleware);
 // Helper function to generate next available invoice number
 async function generateInvoiceNumber(tenantId: string): Promise<string> {
   const year = new Date().getFullYear();
+  const prefix = `INV-${year}-`;
   
-  // Get the latest invoice for this year to determine next number
-  const latestInvoice = await prisma.invoice.findFirst({
+  // Get all invoices for this year and tenant
+  const invoices = await prisma.invoice.findMany({
     where: { 
       tenantId, 
-      invoiceNumber: { startsWith: `INV-${year}-` } 
+      invoiceNumber: { startsWith: prefix } 
     },
+    select: { invoiceNumber: true },
     orderBy: { invoiceNumber: 'desc' },
   });
 
-  let nextNumber = 1;
-  if (latestInvoice) {
-    // Extract number from INV-2026-00005 format
-    const match = latestInvoice.invoiceNumber.match(/INV-\d{4}-(\d{5})/);
+  // Extract all used numbers
+  const usedNumbers = new Set<number>();
+  for (const inv of invoices) {
+    const match = inv.invoiceNumber.match(/INV-\d{4}-(\d{5})/);
     if (match) {
-      nextNumber = parseInt(match[1], 10) + 1;
+      usedNumbers.add(parseInt(match[1], 10));
     }
   }
 
-  return `INV-${year}-${String(nextNumber).padStart(5, "0")}`;
+  // Find the first available number
+  let nextNumber = 1;
+  while (usedNumbers.has(nextNumber)) {
+    nextNumber++;
+  }
+
+  return `${prefix}${String(nextNumber).padStart(5, "0")}`;
 }
 
 // Create Invoice
@@ -92,14 +100,18 @@ router.post(
         break; // Success, exit loop
       } catch (error: any) {
         if (error.code === 'P2002' && retries > 1) {
-          // Unique constraint violation, retry with exponential backoff
+          // Unique constraint violation, retry
           retries--;
-          const delay = Math.random() * (6 - retries) * 50; // Random delay 0-250ms
+          const delay = 50 + Math.random() * 100; // Random delay 50-150ms
           await new Promise(resolve => setTimeout(resolve, delay));
           continue;
         }
         throw error; // Re-throw if not a duplicate or out of retries
       }
+    }
+
+    if (!invoice) {
+      return res.status(500).json({ error: "Failed to create invoice after multiple attempts" });
     }
 
     res.status(201).json(invoice);

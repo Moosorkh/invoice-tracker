@@ -13,39 +13,6 @@ const router = express.Router();
 // Apply auth middleware to all routes
 router.use(authMiddleware);
 
-// Helper function to generate next available invoice number
-async function generateInvoiceNumber(tenantId: string): Promise<string> {
-  const year = new Date().getFullYear();
-  const prefix = `INV-${year}-`;
-  
-  // Get all invoices for this year and tenant
-  const invoices = await prisma.invoice.findMany({
-    where: { 
-      tenantId, 
-      invoiceNumber: { startsWith: prefix } 
-    },
-    select: { invoiceNumber: true },
-    orderBy: { invoiceNumber: 'desc' },
-  });
-
-  // Extract all used numbers
-  const usedNumbers = new Set<number>();
-  for (const inv of invoices) {
-    const match = inv.invoiceNumber.match(/INV-\d{4}-(\d{5})/);
-    if (match) {
-      usedNumbers.add(parseInt(match[1], 10));
-    }
-  }
-
-  // Find the first available number
-  let nextNumber = 1;
-  while (usedNumbers.has(nextNumber)) {
-    nextNumber++;
-  }
-
-  return `${prefix}${String(nextNumber).padStart(5, "0")}`;
-}
-
 // Create Invoice
 router.post(
   "/",
@@ -68,51 +35,57 @@ router.post(
       return res.status(404).json({ error: "Client not found or does not belong to your organization" });
     }
 
-    // Retry logic for invoice number generation (handles race conditions)
-    let invoice;
-    let retries = 5;
-    
-    while (retries > 0) {
-      try {
-        const invoiceNumber = await generateInvoiceNumber(tenantId);
+    // Use a transaction to atomically generate invoice number and create invoice
+    const invoice = await prisma.$transaction(async (tx) => {
+      const year = new Date().getFullYear();
+      const prefix = `INV-${year}-`;
+      
+      // Get the latest invoice number within this transaction
+      const latestInvoice = await tx.invoice.findFirst({
+        where: { 
+          tenantId, 
+          invoiceNumber: { startsWith: prefix } 
+        },
+        orderBy: { invoiceNumber: 'desc' },
+      });
 
-        invoice = await prisma.invoice.create({
-          data: {
-            invoiceNumber,
-            amount: validatedData.amount,
-            status: validatedData.status,
-            dueDate: validatedData.dueDate ? new Date(validatedData.dueDate) : null,
-            description: validatedData.description,
-            client: {
-              connect: { id: validatedData.clientId },
-            },
-            user: {
-              connect: { id: userId },
-            },
-            tenant: {
-              connect: { id: tenantId },
-            },
-          },
-          include: {
-            client: true,
-          },
-        });
-        break; // Success, exit loop
-      } catch (error: any) {
-        if (error.code === 'P2002' && retries > 1) {
-          // Unique constraint violation, retry
-          retries--;
-          const delay = 50 + Math.random() * 100; // Random delay 50-150ms
-          await new Promise(resolve => setTimeout(resolve, delay));
-          continue;
+      let nextNumber = 1;
+      if (latestInvoice) {
+        const match = latestInvoice.invoiceNumber.match(/INV-\d{4}-(\d{5})/);
+        if (match) {
+          nextNumber = parseInt(match[1], 10) + 1;
         }
-        throw error; // Re-throw if not a duplicate or out of retries
       }
-    }
 
-    if (!invoice) {
-      return res.status(500).json({ error: "Failed to create invoice after multiple attempts" });
-    }
+      const invoiceNumber = `${prefix}${String(nextNumber).padStart(5, "0")}`;
+
+      // Create the invoice within the same transaction
+      return await tx.invoice.create({
+        data: {
+          invoiceNumber,
+          amount: validatedData.amount,
+          status: validatedData.status,
+          dueDate: validatedData.dueDate ? new Date(validatedData.dueDate) : null,
+          description: validatedData.description,
+          client: {
+            connect: { id: validatedData.clientId },
+          },
+          user: {
+            connect: { id: userId },
+          },
+          tenant: {
+            connect: { id: tenantId },
+          },
+        },
+        include: {
+          client: true,
+        },
+      });
+    }, {
+      isolationLevel: 'Serializable', // Ensures no concurrent transactions can interfere
+      maxWait: 5000, // Maximum time to wait for a transaction slot
+      timeout: 10000, // Maximum time the transaction can run
+    });
 
     res.status(201).json(invoice);
   })

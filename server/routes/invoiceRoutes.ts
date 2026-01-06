@@ -13,13 +13,29 @@ const router = express.Router();
 // Apply auth middleware to all routes
 router.use(authMiddleware);
 
-// Helper function to generate invoice number
+// Helper function to generate next available invoice number
 async function generateInvoiceNumber(tenantId: string): Promise<string> {
   const year = new Date().getFullYear();
-  const count = await prisma.invoice.count({
-    where: { tenantId, invoiceNumber: { startsWith: `INV-${year}-` } },
+  
+  // Get the latest invoice for this year to determine next number
+  const latestInvoice = await prisma.invoice.findFirst({
+    where: { 
+      tenantId, 
+      invoiceNumber: { startsWith: `INV-${year}-` } 
+    },
+    orderBy: { invoiceNumber: 'desc' },
   });
-  return `INV-${year}-${String(count + 1).padStart(5, "0")}`;
+
+  let nextNumber = 1;
+  if (latestInvoice) {
+    // Extract number from INV-2026-00005 format
+    const match = latestInvoice.invoiceNumber.match(/INV-\d{4}-(\d{5})/);
+    if (match) {
+      nextNumber = parseInt(match[1], 10) + 1;
+    }
+  }
+
+  return `INV-${year}-${String(nextNumber).padStart(5, "0")}`;
 }
 
 // Create Invoice
@@ -46,7 +62,7 @@ router.post(
 
     // Retry logic for invoice number generation (handles race conditions)
     let invoice;
-    let retries = 3;
+    let retries = 5;
     
     while (retries > 0) {
       try {
@@ -76,9 +92,10 @@ router.post(
         break; // Success, exit loop
       } catch (error: any) {
         if (error.code === 'P2002' && retries > 1) {
-          // Unique constraint violation, retry
+          // Unique constraint violation, retry with exponential backoff
           retries--;
-          await new Promise(resolve => setTimeout(resolve, 100)); // Brief delay
+          const delay = Math.random() * (6 - retries) * 50; // Random delay 0-250ms
+          await new Promise(resolve => setTimeout(resolve, delay));
           continue;
         }
         throw error; // Re-throw if not a duplicate or out of retries

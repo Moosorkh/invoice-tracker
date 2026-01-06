@@ -13,6 +13,26 @@ const router = express.Router();
 // Apply auth middleware to all routes
 router.use(authMiddleware);
 
+// Helper function to generate next available invoice number
+async function generateInvoiceNumber(tenantId: string): Promise<string> {
+  const year = new Date().getFullYear();
+  const prefix = `INV-${year}-`;
+
+  const latest = await prisma.invoice.findFirst({
+    where: {
+      tenantId,
+      invoiceNumber: { startsWith: prefix },
+    },
+    select: { invoiceNumber: true },
+    orderBy: { invoiceNumber: "desc" },
+  });
+
+  const last = latest?.invoiceNumber?.match(/INV-\d{4}-(\d{5})/)?.[1];
+  const next = last ? parseInt(last, 10) + 1 : 1;
+
+  return `${prefix}${String(next).padStart(5, "0")}`;
+}
+
 // Create Invoice
 router.post(
   "/",
@@ -35,59 +55,49 @@ router.post(
       return res.status(404).json({ error: "Client not found or does not belong to your organization" });
     }
 
-    // Use a transaction to atomically generate invoice number and create invoice
-    const invoice = await prisma.$transaction(async (tx) => {
-      const year = new Date().getFullYear();
-      const prefix = `INV-${year}-`;
-      
-      // Get the latest invoice number within this transaction
-      const latestInvoice = await tx.invoice.findFirst({
-        where: { 
-          tenantId, 
-          invoiceNumber: { startsWith: prefix } 
-        },
-        orderBy: { invoiceNumber: 'desc' },
-      });
+    // Retry logic for invoice number generation (handles race conditions)
+    const maxAttempts = 5;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const invoiceNumber = await generateInvoiceNumber(tenantId);
 
-      let nextNumber = 1;
-      if (latestInvoice) {
-        const match = latestInvoice.invoiceNumber.match(/INV-\d{4}-(\d{5})/);
-        if (match) {
-          nextNumber = parseInt(match[1], 10) + 1;
+        const invoice = await prisma.invoice.create({
+          data: {
+            invoiceNumber,
+            amount: validatedData.amount,
+            status: validatedData.status,
+            dueDate: validatedData.dueDate ? new Date(validatedData.dueDate) : null,
+            description: validatedData.description,
+            client: {
+              connect: { id: validatedData.clientId },
+            },
+            user: {
+              connect: { id: userId },
+            },
+            tenant: {
+              connect: { id: tenantId },
+            },
+          },
+          include: {
+            client: true,
+          },
+        });
+
+        return res.status(201).json(invoice);
+      } catch (error: any) {
+        if (error?.code === "P2002" && attempt < maxAttempts) {
+          const delay = 50 + Math.random() * 100;
+          await new Promise((r) => setTimeout(r, delay));
+          continue;
         }
+
+        if (error?.code === "P2002") {
+          return res.status(409).json({ error: "Invoice number already exists. Please retry." });
+        }
+
+        throw error;
       }
-
-      const invoiceNumber = `${prefix}${String(nextNumber).padStart(5, "0")}`;
-
-      // Create the invoice within the same transaction
-      return await tx.invoice.create({
-        data: {
-          invoiceNumber,
-          amount: validatedData.amount,
-          status: validatedData.status,
-          dueDate: validatedData.dueDate ? new Date(validatedData.dueDate) : null,
-          description: validatedData.description,
-          client: {
-            connect: { id: validatedData.clientId },
-          },
-          user: {
-            connect: { id: userId },
-          },
-          tenant: {
-            connect: { id: tenantId },
-          },
-        },
-        include: {
-          client: true,
-        },
-      });
-    }, {
-      isolationLevel: 'Serializable', // Ensures no concurrent transactions can interfere
-      maxWait: 5000, // Maximum time to wait for a transaction slot
-      timeout: 10000, // Maximum time the transaction can run
-    });
-
-    res.status(201).json(invoice);
+    }
   })
 );
 

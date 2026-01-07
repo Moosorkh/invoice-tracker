@@ -12,7 +12,7 @@ async function checkGlobalUniques() {
         WHERE c.contype = 'u'
       )
       SELECT
-        uniq.conrelid::regclass AS table_name,
+        uniq.conrelid::regclass::text AS table_name,
         uniq.conname,
         array_agg(a.attname ORDER BY k.ord) AS columns
       FROM uniq

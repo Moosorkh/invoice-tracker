@@ -38,7 +38,7 @@ async function checkGlobalUniques() {
       JOIN LATERAL unnest(ix.indkey) WITH ORDINALITY AS k(attnum, ord) ON true
       JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = k.attnum
       WHERE ix.indisunique
-        AND t.relname IN ('Invoice', 'Client', 'Loan', 'User', 'Payment')
+        AND t.relname IN ('Invoice', 'Client', 'ClientUser', 'Loan', 'User', 'Payment')
       GROUP BY 1, 2
       HAVING NOT bool_or(a.attname = 'tenantId')
       ORDER BY 1, 2;

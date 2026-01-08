@@ -18,3 +18,9 @@ ALTER TABLE "Loan" DROP CONSTRAINT IF EXISTS "Loan_loanNumber_key";
 DROP INDEX IF EXISTS "Loan_loanNumber_key";
 CREATE UNIQUE INDEX IF NOT EXISTS "Loan_tenantId_loanNumber_key" 
 ON "Loan"("tenantId", "loanNumber");
+
+-- Fix ClientUser (portal users): email addresses should be unique per tenant
+ALTER TABLE "ClientUser" DROP CONSTRAINT IF EXISTS "ClientUser_email_key";
+DROP INDEX IF EXISTS "ClientUser_email_key";
+CREATE UNIQUE INDEX IF NOT EXISTS "ClientUser_tenantId_email_key" 
+ON "ClientUser"("tenantId", "email");

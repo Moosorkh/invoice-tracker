@@ -18,6 +18,7 @@ import subscriptionRoutes from "./routes/subscriptionRoutes";
 import webhookRoutes from "./routes/webhookRoutes";
 import portalAuthRoutes from "./routes/portalAuthRoutes";
 import portalRoutes from "./routes/portalRoutes";
+import debugRoutes from "./routes/debugRoutes";
 import { tenantResolver } from "./middleware/tenantResolver";
 import { staffOnlyMiddleware } from "./middleware/clientPortalAuth";
 import { errorHandler } from "./middleware/errorHandler";
@@ -104,6 +105,9 @@ app.use("/t/:slug/api/payments", staffOnlyMiddleware, paymentRoutes);
 app.use("/t/:slug/api/invoice-items", staffOnlyMiddleware, invoiceItemRoutes);
 app.use("/t/:slug/api/loans", staffOnlyMiddleware, loanRoutes);
 app.use("/t/:slug/api/subscriptions", staffOnlyMiddleware, subscriptionRoutes);
+
+// DEBUG endpoint (remove in production later)
+app.use("/api/debug", debugRoutes);
 
 // ========================================
 // LEGACY ROUTES (backward compatibility)

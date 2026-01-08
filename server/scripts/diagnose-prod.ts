@@ -3,11 +3,12 @@ import { prisma } from "../utils/prisma";
 async function diagnoseProduction() {
   console.log("=" .repeat(80));
   console.log("PRODUCTION DATABASE DIAGNOSIS");
+  console.log("Database:", process.env.DATABASE_URL?.substring(0, 50) + "...");
   console.log("=" .repeat(80));
 
   try {
-    // Query 1: Check what unique indexes actually exist in prod
-    console.log("\n1. UNIQUE INDEXES ON Client, ClientUser, User");
+    // 1. Check what unique indexes actually exist in prod
+    console.log("\n1. UNIQUE INDEXES ON ALL TENANT TABLES");
     console.log("-".repeat(80));
     const uniqueIndexes = await prisma.$queryRaw<any[]>`
       SELECT
@@ -19,7 +20,7 @@ async function diagnoseProduction() {
       JOIN pg_class t ON t.oid = ix.indrelid
       WHERE ix.indisunique
         AND t.relnamespace = 'public'::regnamespace
-        AND t.relname IN ('Client','ClientUser','User')
+        AND t.relname IN ('Client','ClientUser','Invoice','Loan','User')
       ORDER BY t.relname, i.relname;
     `;
     

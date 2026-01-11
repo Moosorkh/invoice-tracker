@@ -27,7 +27,10 @@ router.get(
         name: true,
         email: true,
         phone: true,
-        address: true,
+        mailingAddress: true,
+        city: true,
+        state: true,
+        zipCode: true,
       },
     });
 
@@ -171,7 +174,10 @@ router.get(
             name: true,
             email: true,
             phone: true,
-            address: true,
+            mailingAddress: true,
+            city: true,
+            state: true,
+            zipCode: true,
           },
         },
       },

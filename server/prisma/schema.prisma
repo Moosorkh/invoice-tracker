@@ -22,6 +22,13 @@ model Tenant {
   status            String         @default("active") // active, suspended, canceled
   billingCustomerId String?        // Stripe customer ID
   currency          String         @default("USD")
+  
+  // Usage limits (enforced by plan)
+  maxUsers          Int            @default(3)
+  maxClients        Int            @default(10)
+  maxInvoices       Int            @default(50)
+  maxLoans          Int            @default(10)
+  
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
   users             UserTenant[]
@@ -62,18 +69,48 @@ model Client {
   id          String       @id @default(uuid())
   tenantId    String
   tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  // Basic info
   name        String
   email       String
   phone       String?
-  address     String?
+  
+  // Enhanced borrower fields for loan servicing
+  type        String       @default("individual") // individual, business
+  taxId       String?      // SSN/EIN - encrypt in production
+  dateOfBirth DateTime?
+  
+  // Business-specific
+  businessName    String?
+  businessType    String?  // LLC, Corporation, etc.
+  
+  // Contact details
+  mailingAddress  String?
+  physicalAddress String?
+  city            String?
+  state           String?
+  zipCode         String?
+  country         String?   @default("US")
+  
+  // Status & notes
+  status      String       @default("active") // active, inactive, suspended
+  notes       String?
+  
+  // Relations
   invoices    Invoice[]
   loans       Loan[]
+  addresses   ClientAddress[]
+  contacts    ClientContact[]
+  documents   ClientDocument[]
   portalUsers ClientUser[] // Portal access for this client
+  
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
   @@unique([tenantId, email])
   @@index([tenantId])
+  @@index([type])
+  @@index([status])
 }
 
 model Invoice {
@@ -138,18 +175,47 @@ model Loan {
   client           Client                 @relation(fields: [clientId], references: [id], onDelete: Cascade)
   userId           String
   user             User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Loan terms
   principal        Decimal                @db.Decimal(19, 4)
-  interestRate     Decimal                @db.Decimal(5, 2) // Annual percentage rate
+  interestRate     Decimal                @db.Decimal(5, 4) // Annual percentage rate (supports 12.5000%)
+  rateType         String                 @default("fixed") // fixed, variable
   termMonths       Int
   paymentFrequency String                 @default("monthly") // monthly, biweekly, weekly
-  status           String                 @default("active") // active, closed, charged_off, delinquent
+  amortizationType String                 @default("amortizing") // amortizing, interest_only, balloon
+  
+  // Important dates
   startDate        DateTime
+  firstDueDate     DateTime
   maturityDate     DateTime
   nextDueDate      DateTime?
+  activatedAt      DateTime?  // When loan was boarded/activated
+  
+  // Lifecycle states
+  status           String                 @default("draft") // draft, approved, active, paid_off, charged_off, in_default
+  substatus        String?                // current, delinquent_30, delinquent_60, delinquent_90, in_collections
+  
+  // Running balances (updated by ledger events)
+  currentPrincipal Decimal                @db.Decimal(19, 4) @default(0)
+  currentInterest  Decimal                @db.Decimal(19, 4) @default(0)
+  currentFees      Decimal                @db.Decimal(19, 4) @default(0)
   totalPaid        Decimal                @db.Decimal(19, 4) @default(0)
+  
+  // Configuration
+  graceDays        Int                    @default(10)
+  lateFeeAmount    Decimal?               @db.Decimal(19, 4)
+  lateFeePercent   Decimal?               @db.Decimal(5, 2)
+  
+  // Metadata
   description      String?
+  internalNotes    String?
+  
+  // Relations
   payments         Payment[]
   schedule         LoanPaymentSchedule[]
+  events           LoanEvent[]
+  documents        LoanDocument[]
+  
   createdAt        DateTime               @default(now())
   updatedAt        DateTime               @updatedAt
 
@@ -158,6 +224,7 @@ model Loan {
   @@index([clientId])
   @@index([userId])
   @@index([status])
+  @@index([substatus])
 }
 
 model LoanPaymentSchedule {
@@ -232,3 +299,130 @@ model PortalAuthToken {
   @@index([email, tenantId])
   @@index([expiresAt])
 }
+
+// ========================================
+// LOAN SERVICING MODELS
+// ========================================
+
+// Client addresses (for loan documentation & mailing)
+model ClientAddress {
+  id          String   @id @default(uuid())
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  type        String   // mailing, physical, business
+  street1     String
+  street2     String?
+  city        String
+  state       String
+  zipCode     String
+  country     String   @default("US")
+  
+  isPrimary   Boolean  @default(false)
+  effectiveFrom DateTime @default(now())
+  effectiveTo   DateTime?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([clientId])
+  @@index([type])
+}
+
+// Client contacts (for business customers)
+model ClientContact {
+  id          String   @id @default(uuid())
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  name        String
+  role        String?  // CFO, Accountant, Authorized Signer
+  email       String
+  phone       String?
+  isPrimary   Boolean  @default(false)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([clientId])
+}
+
+// Client documents (ID, tax forms, signed agreements)
+model ClientDocument {
+  id          String   @id @default(uuid())
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  type        String   // drivers_license, passport, tax_form, credit_report, signed_agreement
+  fileName    String
+  fileUrl     String   // S3/storage URL
+  fileSize    Int?
+  mimeType    String?
+  
+  uploadedBy  String?  // User ID
+  notes       String?
+  
+  createdAt   DateTime @default(now())
+
+  @@index([clientId])
+  @@index([type])
+}
+
+// Loan documents (promissory notes, disclosures)
+model LoanDocument {
+  id          String   @id @default(uuid())
+  loanId      String
+  loan        Loan     @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  
+  type        String   // promissory_note, truth_in_lending, payment_schedule, amendment
+  fileName    String
+  fileUrl     String
+  fileSize    Int?
+  mimeType    String?
+  
+  uploadedBy  String?
+  notes       String?
+  signedAt    DateTime?
+  
+  createdAt   DateTime @default(now())
+
+  @@index([loanId])
+  @@index([type])
+}
+
+// Loan event ledger (append-only, single source of truth)
+model LoanEvent {
+  id          String   @id @default(uuid())
+  loanId      String
+  loan        Loan     @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  
+  type        String   // disbursement, payment_posted, fee_assessed, interest_accrued, adjustment, reversal, status_change
+  
+  // Amounts (what changed)
+  principalAmount  Decimal? @db.Decimal(19, 4)
+  interestAmount   Decimal? @db.Decimal(19, 4)
+  feeAmount        Decimal? @db.Decimal(19, 4)
+  
+  // Balances after this event
+  principalBalance Decimal  @db.Decimal(19, 4)
+  interestBalance  Decimal  @db.Decimal(19, 4)
+  feeBalance       Decimal  @db.Decimal(19, 4)
+  
+  // Metadata
+  effectiveDate    DateTime @default(now())
+  description      String?
+  metadata         Json?    // Store additional context
+  
+  // Audit
+  createdBy   String?  // User ID
+  reversedBy  String?  // If this event was reversed, which event did it
+  reversalOf  String?  // If this is a reversal, which event does it reverse
+  
+  createdAt   DateTime @default(now())
+
+  @@index([loanId])
+  @@index([type])
+  @@index([effectiveDate])
+  @@index([createdAt])
+}
+

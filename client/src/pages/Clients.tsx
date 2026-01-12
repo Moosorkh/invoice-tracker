@@ -28,6 +28,12 @@ interface Client {
   id: string;
   name: string;
   email: string;
+  phone?: string;
+  type?: string;
+  businessName?: string;
+  city?: string;
+  state?: string;
+  status?: string;
   portalUsers?: { id: string; email: string }[];
 }
 
@@ -44,7 +50,16 @@ const Clients = () => {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [currentClient, setCurrentClient] = useState<Client | null>(null);
-  const [form, setForm] = useState({ name: "", email: "" });
+  const [form, setForm] = useState({ 
+    name: "", 
+    email: "",
+    phone: "",
+    type: "individual",
+    businessName: "",
+    city: "",
+    state: "",
+    zipCode: "",
+  });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const { token } = useAuth();
@@ -125,7 +140,16 @@ const Clients = () => {
       fetchClients();
       setOpen(false);
       // Reset form
-      setForm({ name: "", email: "" });
+      setForm({ 
+        name: "", 
+        email: "",
+        phone: "",
+        type: "individual",
+        businessName: "",
+        city: "",
+        state: "",
+        zipCode: "",
+      });
     } catch (error) {
       console.error("Error creating client:", error);
       setError(
@@ -136,7 +160,16 @@ const Clients = () => {
 
   const handleEdit = (client: Client) => {
     setCurrentClient(client);
-    setForm({ name: client.name, email: client.email });
+    setForm({ 
+      name: client.name, 
+      email: client.email,
+      phone: client.phone || "",
+      type: client.type || "individual",
+      businessName: client.businessName || "",
+      city: client.city || "",
+      state: client.state || "",
+      zipCode: "",
+    });
     setEditOpen(true);
   };
 
@@ -160,7 +193,16 @@ const Clients = () => {
 
       fetchClients();
       setEditOpen(false);
-      setForm({ name: "", email: "" });
+      setForm({ 
+        name: "", 
+        email: "",
+        phone: "",
+        type: "individual",
+        businessName: "",
+        city: "",
+        state: "",
+        zipCode: "",
+      });
     } catch (error) {
       console.error("Error updating client:", error);
       setError(
@@ -285,6 +327,8 @@ const Clients = () => {
               <TableCell>#</TableCell>
               <TableCell>Name</TableCell>
               <TableCell>Email</TableCell>
+              <TableCell>Type</TableCell>
+              <TableCell>Location</TableCell>
               <TableCell>Portal Access</TableCell>
               <TableCell>Actions</TableCell>
             </TableRow>
@@ -292,13 +336,13 @@ const Clients = () => {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={5} align="center">
+                <TableCell colSpan={7} align="center">
                   Loading...
                 </TableCell>
               </TableRow>
             ) : clients.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} align="center">
+                <TableCell colSpan={7} align="center">
                   No clients found
                 </TableCell>
               </TableRow>
@@ -306,8 +350,27 @@ const Clients = () => {
               clients.map((client, index) => (
                 <TableRow key={client.id}>
                   <TableCell>{index + 1}</TableCell>
-                  <TableCell>{client.name}</TableCell>
+                  <TableCell>
+                    {client.type === 'business' && client.businessName ? (
+                      <div>
+                        <div>{client.businessName}</div>
+                        <Typography variant="caption" color="textSecondary">
+                          {client.name}
+                        </Typography>
+                      </div>
+                    ) : (
+                      client.name
+                    )}
+                  </TableCell>
                   <TableCell>{client.email}</TableCell>
+                  <TableCell>
+                    <Typography variant="caption">
+                      {client.type === 'business' ? 'Business' : 'Individual'}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    {client.city && client.state ? `${client.city}, ${client.state}` : '-'}
+                  </TableCell>
                   <TableCell>
                     <Button
                       size="small"
@@ -337,7 +400,7 @@ const Clients = () => {
       </TableContainer>
 
       {/* Create Client Dialog */}
-      <Dialog open={open} onClose={() => setOpen(false)}>
+      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="md" fullWidth>
         <DialogTitle>New Client</DialogTitle>
         <DialogContent>
           <TextField
@@ -359,6 +422,63 @@ const Clients = () => {
             margin="dense"
             required
           />
+          <TextField
+            fullWidth
+            label="Phone"
+            name="phone"
+            value={form.phone}
+            onChange={handleChange}
+            margin="dense"
+          />
+          <TextField
+            select
+            fullWidth
+            label="Type"
+            name="type"
+            value={form.type}
+            onChange={handleChange as any}
+            margin="dense"
+            SelectProps={{ native: true }}
+          >
+            <option value="individual">Individual</option>
+            <option value="business">Business</option>
+          </TextField>
+          {form.type === "business" && (
+            <TextField
+              fullWidth
+              label="Business Name"
+              name="businessName"
+              value={form.businessName}
+              onChange={handleChange}
+              margin="dense"
+            />
+          )}
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <TextField
+              label="City"
+              name="city"
+              value={form.city}
+              onChange={handleChange}
+              margin="dense"
+              sx={{ flex: 1 }}
+            />
+            <TextField
+              label="State"
+              name="state"
+              value={form.state}
+              onChange={handleChange}
+              margin="dense"
+              sx={{ width: 100 }}
+            />
+            <TextField
+              label="ZIP"
+              name="zipCode"
+              value={form.zipCode}
+              onChange={handleChange}
+              margin="dense"
+              sx={{ width: 120 }}
+            />
+          </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpen(false)}>Cancel</Button>

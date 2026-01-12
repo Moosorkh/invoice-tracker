@@ -90,7 +90,15 @@ router.get(
 
     const client = await prisma.client.findFirst({
       where: { id, tenantId },
-      include: { invoices: true },
+      include: { 
+        invoices: true,
+        loans: true,
+        addresses: true,
+        contacts: true,
+        documents: {
+          orderBy: { createdAt: 'desc' }
+        }
+      },
     });
 
     if (!client) {
@@ -157,6 +165,58 @@ router.delete(
     });
 
     res.json({ message: "Client deleted successfully" });
+  })
+);
+
+// Add client address
+router.post(
+  "/:id/addresses",
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const tenantId = req.user!.tenantId;
+
+    const client = await prisma.client.findFirst({
+      where: { id, tenantId },
+    });
+
+    if (!client) {
+      return res.status(404).json({ error: "Client not found" });
+    }
+
+    const address = await prisma.clientAddress.create({
+      data: {
+        clientId: id,
+        ...req.body,
+      },
+    });
+
+    res.status(201).json(address);
+  })
+);
+
+// Add client contact
+router.post(
+  "/:id/contacts",
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const tenantId = req.user!.tenantId;
+
+    const client = await prisma.client.findFirst({
+      where: { id, tenantId },
+    });
+
+    if (!client) {
+      return res.status(404).json({ error: "Client not found" });
+    }
+
+    const contact = await prisma.clientContact.create({
+      data: {
+        clientId: id,
+        ...req.body,
+      },
+    });
+
+    res.status(201).json(contact);
   })
 );
 

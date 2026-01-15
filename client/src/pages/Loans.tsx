@@ -60,10 +60,16 @@ const Loans: React.FC = () => {
     clientId: "",
     principal: 0,
     interestRate: 0,
+    rateType: "fixed",
     termMonths: 12,
     paymentFrequency: "monthly",
+    amortizationType: "amortizing",
     startDate: new Date().toISOString().split("T")[0],
+    graceDays: 10,
+    lateFeeAmount: 0,
+    lateFeePercent: 0,
     description: "",
+    internalNotes: "",
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -167,10 +173,16 @@ const Loans: React.FC = () => {
         clientId: "",
         principal: 0,
         interestRate: 0,
+        rateType: "fixed",
         termMonths: 12,
         paymentFrequency: "monthly",
+        amortizationType: "amortizing",
         startDate: new Date().toISOString().split("T")[0],
+        graceDays: 10,
+        lateFeeAmount: 0,
+        lateFeePercent: 0,
         description: "",
+        internalNotes: "",
       });
     } catch (error) {
       console.error("Error creating loan:", error);
@@ -357,6 +369,19 @@ const Loans: React.FC = () => {
             inputProps={{ step: "0.01", min: "0", max: "100" }}
           />
 
+          <FormControl fullWidth margin="dense">
+            <InputLabel>Rate Type</InputLabel>
+            <Select
+              name="rateType"
+              value={form.rateType}
+              onChange={handleChange}
+              label="Rate Type"
+            >
+              <MenuItem value="fixed">Fixed</MenuItem>
+              <MenuItem value="variable">Variable</MenuItem>
+            </Select>
+          </FormControl>
+
           <TextField
             fullWidth
             label="Term (Months)"
@@ -368,6 +393,34 @@ const Loans: React.FC = () => {
             required
             inputProps={{ min: "1" }}
           />
+
+          <FormControl fullWidth margin="dense">
+            <InputLabel>Payment Frequency</InputLabel>
+            <Select
+              name="paymentFrequency"
+              value={form.paymentFrequency}
+              onChange={handleChange}
+              label="Payment Frequency"
+            >
+              <MenuItem value="monthly">Monthly</MenuItem>
+              <MenuItem value="biweekly">Biweekly</MenuItem>
+              <MenuItem value="weekly">Weekly</MenuItem>
+            </Select>
+          </FormControl>
+
+          <FormControl fullWidth margin="dense">
+            <InputLabel>Amortization Type</InputLabel>
+            <Select
+              name="amortizationType"
+              value={form.amortizationType}
+              onChange={handleChange}
+              label="Amortization Type"
+            >
+              <MenuItem value="amortizing">Amortizing</MenuItem>
+              <MenuItem value="interest_only">Interest Only</MenuItem>
+              <MenuItem value="balloon">Balloon</MenuItem>
+            </Select>
+          </FormControl>
 
           <TextField
             fullWidth
@@ -381,11 +434,55 @@ const Loans: React.FC = () => {
             InputLabelProps={{ shrink: true }}
           />
 
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <TextField
+              label="Grace Days"
+              type="number"
+              name="graceDays"
+              value={form.graceDays}
+              onChange={handleChange}
+              margin="dense"
+              sx={{ flex: 1 }}
+              inputProps={{ min: "0", max: "30" }}
+            />
+            <TextField
+              label="Late Fee ($)"
+              type="number"
+              name="lateFeeAmount"
+              value={form.lateFeeAmount === 0 ? "" : form.lateFeeAmount}
+              onChange={handleChange}
+              margin="dense"
+              sx={{ flex: 1 }}
+              inputProps={{ min: "0", step: "0.01" }}
+            />
+            <TextField
+              label="Late Fee (%)"
+              type="number"
+              name="lateFeePercent"
+              value={form.lateFeePercent === 0 ? "" : form.lateFeePercent}
+              onChange={handleChange}
+              margin="dense"
+              sx={{ flex: 1 }}
+              inputProps={{ min: "0", max: "100", step: "0.01" }}
+            />
+          </Box>
+
           <TextField
             fullWidth
             label="Description"
             name="description"
             value={form.description}
+            onChange={handleChange}
+            margin="dense"
+            multiline
+            rows={2}
+          />
+
+          <TextField
+            fullWidth
+            label="Internal Notes"
+            name="internalNotes"
+            value={form.internalNotes}
             onChange={handleChange}
             margin="dense"
             multiline

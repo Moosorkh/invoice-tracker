@@ -114,18 +114,40 @@ router.post(
           loanNumber,
           principal: validatedData.principal,
           interestRate: validatedData.interestRate,
+          rateType: validatedData.rateType,
           termMonths: validatedData.termMonths,
           paymentFrequency: validatedData.paymentFrequency,
+          amortizationType: validatedData.amortizationType,
           status: "active",
           startDate,
           firstDueDate: schedule[0]?.dueDate || startDate,
           maturityDate,
           nextDueDate: schedule[0]?.dueDate,
           currentPrincipal: validatedData.principal,
+          graceDays: validatedData.graceDays,
+          lateFeeAmount: validatedData.lateFeeAmount,
+          lateFeePercent: validatedData.lateFeePercent,
           description: validatedData.description,
+          internalNotes: validatedData.internalNotes,
+          activatedAt: new Date(),
           tenant: { connect: { id: tenantId } },
           client: { connect: { id: validatedData.clientId } },
           user: { connect: { id: userId } },
+        },
+      });
+
+      // Create initial ledger event (disbursement)
+      await tx.loanEvent.create({
+        data: {
+          loanId: newLoan.id,
+          type: "disbursement",
+          principalAmount: validatedData.principal,
+          principalBalance: validatedData.principal,
+          interestBalance: 0,
+          feeBalance: 0,
+          effectiveDate: startDate,
+          description: "Initial loan disbursement",
+          createdBy: userId,
         },
       });
 
@@ -215,6 +237,10 @@ router.get(
         client: true,
         schedule: { orderBy: { dueDate: "asc" } },
         payments: { orderBy: { createdAt: "desc" } },
+        events: { 
+          orderBy: { createdAt: "desc" },
+          take: 50 
+        },
       },
     });
 

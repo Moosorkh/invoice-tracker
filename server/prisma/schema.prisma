@@ -184,7 +184,7 @@ model Loan {
   
   // Loan terms
   principal        Decimal                @db.Decimal(19, 4)
-  interestRate     Decimal                @db.Decimal(5, 4) // Annual percentage rate (supports 12.5000%)
+  interestRate     Decimal                @db.Decimal(6, 4) // Annual percentage rate (supports up to 99.9999%)
   rateType         String                 @default("fixed") // fixed, variable
   termMonths       Int
   paymentFrequency String                 @default("monthly") // monthly, biweekly, weekly
@@ -214,7 +214,7 @@ model Loan {
   // Configuration
   graceDays        Int                    @default(10)
   lateFeeAmount    Decimal?               @db.Decimal(19, 4)
-  lateFeePercent   Decimal?               @db.Decimal(5, 2)
+  lateFeePercent   Decimal?               @db.Decimal(6, 2) // Percentage up to 9999.99%
   
   // Metadata
   description      String?

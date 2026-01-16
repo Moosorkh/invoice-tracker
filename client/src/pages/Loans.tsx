@@ -156,6 +156,29 @@ const Loans: React.FC = () => {
 
   const handleSubmit = async () => {
     setError("");
+    
+    // Client-side validation
+    if (!form.clientId) {
+      setError("Please select a client");
+      return;
+    }
+    if (form.principal <= 0) {
+      setError("Principal amount must be greater than zero");
+      return;
+    }
+    if (form.interestRate < 0 || form.interestRate > 99.99) {
+      setError("Interest rate must be between 0% and 99.99%");
+      return;
+    }
+    if (form.termMonths < 1) {
+      setError("Loan term must be at least 1 month");
+      return;
+    }
+    if (form.lateFeePercent && (form.lateFeePercent < 0 || form.lateFeePercent > 100)) {
+      setError("Late fee percentage must be between 0% and 100%");
+      return;
+    }
+    
     try {
       const startDate = new Date(form.startDate);
       startDate.setHours(12, 0, 0, 0);
@@ -174,7 +197,8 @@ const Loans: React.FC = () => {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to create loan");
+        // Display user-friendly error message from backend
+        throw new Error(errorData.error || "Failed to create loan. Please check your input and try again.");
       }
 
       fetchLoans();

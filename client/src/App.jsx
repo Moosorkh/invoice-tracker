@@ -1,7 +1,8 @@
 import React, { useEffect } from "react";
-import { BrowserRouter as Router, Routes, Route, useNavigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import Navbar from "./components/Navbar";
+import PortalNavbar from "./components/PortalNavbar";
 import Dashboard from "./pages/Dashboard";
 import Invoices from "./pages/Invoices";
 import InvoiceDetail from "./components/InvoiceDetail";
@@ -32,11 +33,26 @@ const RootRedirect = () => {
   return null;
 };
 
+// Conditional navbar component
+const ConditionalNavbar = () => {
+  const location = useLocation();
+  const isPortalRoute = location.pathname.startsWith('/portal/') || 
+                        location.pathname.startsWith('/borrower/') ||
+                        location.pathname.includes('/portal');
+  
+  // Don't show navbar on login pages
+  if (location.pathname.includes('/login')) {
+    return null;
+  }
+  
+  return isPortalRoute ? <PortalNavbar /> : <Navbar />;
+};
+
 const App = () => {
   return (
     <AuthProvider>
       <Router>
-        <Navbar />
+        <ConditionalNavbar />
         <Routes>
           {/* Public routes */}
           <Route path="/login" element={<Login />} />

@@ -12,6 +12,12 @@ const PortalDashboard = () => {
 
   useEffect(() => {
     const fetchDashboard = async () => {
+      if (!token || !tenantSlug) {
+        setError("Missing authentication or tenant information");
+        setLoading(false);
+        return;
+      }
+
       try {
         const res = await fetch(`/t/${tenantSlug}/portal/api/dashboard`, {
           headers: {
@@ -20,12 +26,14 @@ const PortalDashboard = () => {
         });
 
         if (!res.ok) {
-          throw new Error("Failed to load dashboard");
+          const errorData = await res.json().catch(() => ({}));
+          throw new Error(errorData.error || "Failed to load dashboard");
         }
 
         const dashboardData = await res.json();
         setData(dashboardData);
       } catch (err) {
+        console.error("Portal dashboard error:", err);
         setError(err instanceof Error ? err.message : "Failed to load dashboard");
       } finally {
         setLoading(false);

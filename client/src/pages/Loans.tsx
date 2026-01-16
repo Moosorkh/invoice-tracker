@@ -58,6 +58,10 @@ const Loans: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
     clientId: "",
+    productCategory: "personal",
+    accrualMethod: "amortizing",
+    paymentStructure: "level",
+    dayCountConvention: "actual_365",
     principal: 0,
     interestRate: 0,
     rateType: "fixed",
@@ -65,6 +69,8 @@ const Loans: React.FC = () => {
     paymentFrequency: "monthly",
     amortizationType: "amortizing",
     startDate: new Date().toISOString().split("T")[0],
+    interestOnlyMonths: 0,
+    balloonAmount: 0,
     graceDays: 10,
     lateFeeAmount: 0,
     lateFeePercent: 0,
@@ -171,6 +177,10 @@ const Loans: React.FC = () => {
       setOpen(false);
       setForm({
         clientId: "",
+        productCategory: "personal",
+        accrualMethod: "amortizing",
+        paymentStructure: "level",
+        dayCountConvention: "actual_365",
         principal: 0,
         interestRate: 0,
         rateType: "fixed",
@@ -178,6 +188,8 @@ const Loans: React.FC = () => {
         paymentFrequency: "monthly",
         amortizationType: "amortizing",
         startDate: new Date().toISOString().split("T")[0],
+        interestOnlyMonths: 0,
+        balloonAmount: 0,
         graceDays: 10,
         lateFeeAmount: 0,
         lateFeePercent: 0,
@@ -346,6 +358,50 @@ const Loans: React.FC = () => {
             </Select>
           </FormControl>
 
+          <FormControl fullWidth margin="dense">
+            <InputLabel>Product Category</InputLabel>
+            <Select
+              name="productCategory"
+              value={form.productCategory}
+              onChange={handleChange}
+              label="Product Category"
+            >
+              <MenuItem value="mortgage">Mortgage</MenuItem>
+              <MenuItem value="heloc">HELOC</MenuItem>
+              <MenuItem value="auto">Auto Loan</MenuItem>
+              <MenuItem value="personal">Personal Loan</MenuItem>
+              <MenuItem value="business">Business Loan</MenuItem>
+            </Select>
+          </FormControl>
+
+          <FormControl fullWidth margin="dense">
+            <InputLabel>Accrual Method</InputLabel>
+            <Select
+              name="accrualMethod"
+              value={form.accrualMethod}
+              onChange={handleChange}
+              label="Accrual Method"
+            >
+              <MenuItem value="amortizing">Amortizing (Standard)</MenuItem>
+              <MenuItem value="simple_daily">Simple Interest (Daily Accrual)</MenuItem>
+              <MenuItem value="precomputed">Precomputed Interest</MenuItem>
+            </Select>
+          </FormControl>
+
+          <FormControl fullWidth margin="dense">
+            <InputLabel>Payment Structure</InputLabel>
+            <Select
+              name="paymentStructure"
+              value={form.paymentStructure}
+              onChange={handleChange}
+              label="Payment Structure"
+            >
+              <MenuItem value="level">Level Payment</MenuItem>
+              <MenuItem value="interest_only">Interest Only</MenuItem>
+              <MenuItem value="balloon">Balloon</MenuItem>
+            </Select>
+          </FormControl>
+
           <TextField
             fullWidth
             label="Principal Amount"
@@ -433,6 +489,32 @@ const Loans: React.FC = () => {
             required
             InputLabelProps={{ shrink: true }}
           />
+
+          {form.paymentStructure === "interest_only" && (
+            <TextField
+              fullWidth
+              label="Interest Only Period (Months)"
+              type="number"
+              name="interestOnlyMonths"
+              value={form.interestOnlyMonths === 0 ? "" : form.interestOnlyMonths}
+              onChange={handleChange}
+              margin="dense"
+              inputProps={{ min: "1" }}
+            />
+          )}
+
+          {form.paymentStructure === "balloon" && (
+            <TextField
+              fullWidth
+              label="Balloon Amount ($)"
+              type="number"
+              name="balloonAmount"
+              value={form.balloonAmount === 0 ? "" : form.balloonAmount}
+              onChange={handleChange}
+              margin="dense"
+              inputProps={{ min: "0", step: "0.01" }}
+            />
+          )}
 
           <Box sx={{ display: 'flex', gap: 1 }}>
             <TextField

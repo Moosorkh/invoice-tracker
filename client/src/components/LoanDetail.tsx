@@ -110,14 +110,13 @@ const LoanDetail: React.FC = () => {
     if (!loan) return;
 
     try {
-      const response = await fetch(getApiUrl("/api/payments"), {
+      const response = await fetch(getApiUrl(`/api/loans/${loan.id}/payments`), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          loanId: loan.id,
           amount: paymentForm.amount,
           method: paymentForm.method,
           notes: paymentForm.notes,

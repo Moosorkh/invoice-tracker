@@ -176,6 +176,12 @@ model Loan {
   userId           String
   user             User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
   
+  // Product classification (determines calculation behavior)
+  productCategory  String                 @default("personal") // mortgage, heloc, auto, personal, business
+  accrualMethod    String                 @default("amortizing") // amortizing, simple_daily, precomputed
+  paymentStructure String                 @default("level") // level, interest_only, balloon
+  dayCountConvention String               @default("actual_365") // actual_365, actual_360, thirty_360
+  
   // Loan terms
   principal        Decimal                @db.Decimal(19, 4)
   interestRate     Decimal                @db.Decimal(5, 4) // Annual percentage rate (supports 12.5000%)
@@ -183,6 +189,10 @@ model Loan {
   termMonths       Int
   paymentFrequency String                 @default("monthly") // monthly, biweekly, weekly
   amortizationType String                 @default("amortizing") // amortizing, interest_only, balloon
+  
+  // Special structures
+  interestOnlyMonths Int?                 // For interest-only periods
+  balloonAmount     Decimal?              @db.Decimal(19, 4) // For balloon loans
   
   // Important dates
   startDate        DateTime

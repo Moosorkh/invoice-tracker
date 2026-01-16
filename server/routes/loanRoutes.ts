@@ -112,12 +112,18 @@ router.post(
       const newLoan = await tx.loan.create({
         data: {
           loanNumber,
+          productCategory: validatedData.productCategory,
+          accrualMethod: validatedData.accrualMethod,
+          paymentStructure: validatedData.paymentStructure,
+          dayCountConvention: validatedData.dayCountConvention,
           principal: validatedData.principal,
           interestRate: validatedData.interestRate,
           rateType: validatedData.rateType,
           termMonths: validatedData.termMonths,
           paymentFrequency: validatedData.paymentFrequency,
           amortizationType: validatedData.amortizationType,
+          interestOnlyMonths: validatedData.interestOnlyMonths,
+          balloonAmount: validatedData.balloonAmount,
           status: "active",
           startDate,
           firstDueDate: schedule[0]?.dueDate || startDate,
@@ -310,6 +316,115 @@ router.delete(
     await prisma.loan.delete({ where: { id } });
 
     res.json({ message: "Loan deleted successfully" });
+  })
+);
+
+// Post payment to loan
+router.post(
+  "/:id/payments",
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const tenantId = req.user!.tenantId;
+    const userId = req.user!.userId;
+    const { amount, method, effectiveDate, notes } = req.body;
+
+    if (!tenantId) {
+      return res.status(400).json({ error: "No tenant associated with user" });
+    }
+
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ error: "Payment amount must be positive" });
+    }
+
+    const loan = await prisma.loan.findFirst({
+      where: { id, tenantId },
+      include: { schedule: { orderBy: { dueDate: 'asc' } } },
+    });
+
+    if (!loan) {
+      return res.status(404).json({ error: "Loan not found" });
+    }
+
+    // Payment allocation waterfall: Fees → Interest → Principal
+    const result = await prisma.$transaction(async (tx) => {
+      let remainingAmount = amount;
+      const allocations: any = {
+        fees: 0,
+        interest: 0,
+        principal: 0,
+      };
+
+      // Allocate to fees first
+      if (loan.currentFees > 0) {
+        const feePayment = Math.min(remainingAmount, parseFloat(loan.currentFees.toString()));
+        allocations.fees = feePayment;
+        remainingAmount -= feePayment;
+      }
+
+      // Then interest
+      if (remainingAmount > 0 && loan.currentInterest > 0) {
+        const interestPayment = Math.min(remainingAmount, parseFloat(loan.currentInterest.toString()));
+        allocations.interest = interestPayment;
+        remainingAmount -= interestPayment;
+      }
+
+      // Finally principal
+      if (remainingAmount > 0 && loan.currentPrincipal > 0) {
+        const principalPayment = Math.min(remainingAmount, parseFloat(loan.currentPrincipal.toString()));
+        allocations.principal = principalPayment;
+        remainingAmount -= principalPayment;
+      }
+
+      // Update loan balances
+      const newFees = parseFloat(loan.currentFees.toString()) - allocations.fees;
+      const newInterest = parseFloat(loan.currentInterest.toString()) - allocations.interest;
+      const newPrincipal = parseFloat(loan.currentPrincipal.toString()) - allocations.principal;
+      const newTotalPaid = parseFloat(loan.totalPaid.toString()) + amount;
+
+      await tx.loan.update({
+        where: { id },
+        data: {
+          currentFees: newFees,
+          currentInterest: newInterest,
+          currentPrincipal: newPrincipal,
+          totalPaid: newTotalPaid,
+          substatus: newPrincipal === 0 ? 'paid_off' : loan.substatus,
+          status: newPrincipal === 0 ? 'paid_off' : loan.status,
+        },
+      });
+
+      // Create payment record
+      const payment = await tx.payment.create({
+        data: {
+          loanId: id,
+          amount,
+          method: method || 'manual',
+          notes,
+        },
+      });
+
+      // Create ledger event
+      await tx.loanEvent.create({
+        data: {
+          loanId: id,
+          type: 'payment_posted',
+          principalAmount: allocations.principal ? -allocations.principal : null,
+          interestAmount: allocations.interest ? -allocations.interest : null,
+          feeAmount: allocations.fees ? -allocations.fees : null,
+          principalBalance: newPrincipal,
+          interestBalance: newInterest,
+          feeBalance: newFees,
+          effectiveDate: effectiveDate ? new Date(effectiveDate) : new Date(),
+          description: `Payment: $${amount.toFixed(2)} (Fees: $${allocations.fees.toFixed(2)}, Interest: $${allocations.interest.toFixed(2)}, Principal: $${allocations.principal.toFixed(2)})`,
+          metadata: { allocations, overpayment: remainingAmount },
+          createdBy: userId,
+        },
+      });
+
+      return { payment, allocations, overpayment: remainingAmount };
+    });
+
+    res.json(result);
   })
 );
 

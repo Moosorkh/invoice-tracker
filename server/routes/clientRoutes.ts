@@ -327,4 +327,46 @@ router.get(
   })
 );
 
+// Delete portal user
+router.delete(
+  "/:id/portal-users/:userId",
+  asyncHandler(async (req, res) => {
+    const { id, userId } = req.params;
+    const tenantId = req.user!.tenantId;
+
+    if (!tenantId) {
+      return res.status(400).json({ error: "No tenant associated with user" });
+    }
+
+    // Verify client belongs to tenant
+    const client = await prisma.client.findFirst({
+      where: { id, tenantId },
+    });
+
+    if (!client) {
+      return res.status(404).json({ error: "Client not found" });
+    }
+
+    // Verify portal user belongs to this client and tenant
+    const portalUser = await prisma.clientUser.findFirst({
+      where: {
+        id: userId,
+        clientId: id,
+        tenantId,
+      },
+    });
+
+    if (!portalUser) {
+      return res.status(404).json({ error: "Portal user not found" });
+    }
+
+    // Delete the portal user
+    await prisma.clientUser.delete({
+      where: { id: userId },
+    });
+
+    res.json({ message: "Portal user deleted successfully" });
+  })
+);
+
 export default router;

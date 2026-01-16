@@ -71,6 +71,8 @@ const Clients = () => {
     portalUsers: [],
   });
   const [portalEmail, setPortalEmail] = useState("");
+  const [portalPassword, setPortalPassword] = useState("");
+  const [portalName, setPortalName] = useState("");
 
   useEffect(() => {
     console.log('Clients component mounted, token:', !!token);
@@ -247,7 +249,7 @@ const Clients = () => {
 
   const handleOpenPortalDialog = async (client: Client) => {
     try {
-      const res = await fetch(getApiUrl(`/api/client-users/client/${client.id}/portal-users`), {
+      const res = await fetch(getApiUrl(`/api/clients/${client.id}/portal-users`), {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -255,40 +257,64 @@ const Clients = () => {
         open: true,
         clientId: client.id,
         clientName: client.name,
-        portalUsers: data.data || [],
+        portalUsers: Array.isArray(data) ? data : [],
       });
       setPortalEmail("");
+      setPortalPassword("");
+      setPortalName(client.name); // Default to client name
     } catch (error) {
       console.error("Error fetching portal users:", error);
     }
   };
 
   const handleCreatePortalUser = async () => {
-    if (!portalEmail || !portalDialog.clientId) return;
+    if (!portalEmail || !portalPassword || !portalDialog.clientId) {
+      alert("Email and password are required");
+      return;
+    }
+    
+    if (portalPassword.length < 8) {
+      alert("Password must be at least 8 characters");
+      return;
+    }
+    
     try {
-      const res = await fetch(getApiUrl(`/api/client-users/client/${portalDialog.clientId}/portal-user`), {
+      const res = await fetch(getApiUrl(`/api/clients/${portalDialog.clientId}/portal-user`), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ email: portalEmail }),
+        body: JSON.stringify({ 
+          email: portalEmail,
+          password: portalPassword,
+          name: portalName || portalDialog.clientName,
+        }),
       });
+      
       if (!res.ok) {
         const error = await res.json();
         alert(error.error || "Failed to create portal user");
         return;
       }
+      
+      const result = await res.json();
+      
+      // Show success message with portal URL
+      alert(`Portal user created successfully!\n\nPortal Login URL:\n${result.portalLoginUrlFull || result.portalLoginUrl}\n\nEmail: ${portalEmail}\nPassword: ${portalPassword}\n\nShare these credentials with your borrower.`);
+      
+      // Refresh the portal users list
       handleOpenPortalDialog({ id: portalDialog.clientId, name: portalDialog.clientName, email: "" });
     } catch (error) {
       console.error("Error creating portal user:", error);
+      alert("Failed to create portal user");
     }
   };
 
   const handleDeletePortalUser = async (portalUserId: string) => {
     if (!portalDialog.clientId || !confirm("Remove portal access for this user?")) return;
     try {
-      await fetch(getApiUrl(`/api/client-users/client/${portalDialog.clientId}/portal-user/${portalUserId}`), {
+      await fetch(getApiUrl(`/api/clients/${portalDialog.clientId}/portal-users/${portalUserId}`), {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -559,47 +585,78 @@ const Clients = () => {
       <Dialog open={portalDialog.open} onClose={() => setPortalDialog({ ...portalDialog, open: false })} maxWidth="sm" fullWidth>
         <DialogTitle>Portal Access - {portalDialog.clientName}</DialogTitle>
         <DialogContent>
+          <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+            Create a borrower portal account. The borrower can login with email and password.
+          </Typography>
           <Box sx={{ mb: 2 }}>
             <TextField
+              label="Name"
+              value={portalName}
+              onChange={(e) => setPortalName(e.target.value)}
+              fullWidth
+              size="small"
+              sx={{ mb: 1 }}
+              placeholder="Borrower's full name"
+            />
+            <TextField
               label="Email"
+              type="email"
               value={portalEmail}
               onChange={(e) => setPortalEmail(e.target.value)}
               fullWidth
               size="small"
-              sx={{ mr: 1 }}
+              sx={{ mb: 1 }}
+              placeholder="borrower@example.com"
+            />
+            <TextField
+              label="Password"
+              type="password"
+              value={portalPassword}
+              onChange={(e) => setPortalPassword(e.target.value)}
+              fullWidth
+              size="small"
+              sx={{ mb: 1 }}
+              placeholder="Minimum 8 characters"
+              helperText="Set a secure password for the borrower"
             />
             <Button
               variant="contained"
               onClick={handleCreatePortalUser}
+              fullWidth
               sx={{ mt: 1 }}
-              disabled={!portalEmail}
+              disabled={!portalEmail || !portalPassword}
             >
               Create Portal User
             </Button>
           </Box>
           {portalDialog.portalUsers.length > 0 && (
-            <TableContainer>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Email</TableCell>
-                    <TableCell>Action</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {portalDialog.portalUsers.map((pu) => (
-                    <TableRow key={pu.id}>
-                      <TableCell>{pu.email}</TableCell>
-                      <TableCell>
-                        <IconButton size="small" onClick={() => handleDeletePortalUser(pu.id)}>
-                          <Delete fontSize="small" />
-                        </IconButton>
-                      </TableCell>
+            <>
+              <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>
+                Existing Portal Users:
+              </Typography>
+              <TableContainer>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Email</TableCell>
+                      <TableCell>Action</TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                  </TableHead>
+                  <TableBody>
+                    {portalDialog.portalUsers.map((pu) => (
+                      <TableRow key={pu.id}>
+                        <TableCell>{pu.email}</TableCell>
+                        <TableCell>
+                          <IconButton size="small" onClick={() => handleDeletePortalUser(pu.id)}>
+                            <Delete fontSize="small" />
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </>
           )}
           {portalDialog.portalUsers.length === 0 && (
             <Typography color="textSecondary">No portal users yet</Typography>

@@ -38,7 +38,7 @@ const PortalLogin = () => {
       login(data.token, { userId: data.user.id, email: data.user.email });
       
       // Redirect to portal dashboard
-      navigate(`/t/${tenantSlug}/portal`);
+      navigate(`/portal/${tenantSlug}/dashboard`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to log in");
     } finally {
@@ -96,7 +96,7 @@ const PortalLogin = () => {
       login(data.token, { userId: "", email });
       
       // Redirect to portal dashboard
-      navigate(`/t/${tenantSlug}/portal`);
+      navigate(`/portal/${tenantSlug}/dashboard`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to verify token");
     } finally {

@@ -286,7 +286,9 @@ router.post(
 
     res.status(201).json({
       ...userWithoutPassword,
-      portalLoginUrl: `/t/${tenant?.slug || 'portal'}/login`,
+      portalLoginUrl: `/portal/${tenant?.slug || 'login'}`,
+      portalLoginUrlFull: `https://invoice-tracker.up.railway.app/portal/${tenant?.slug || 'login'}`,
+      instructions: "Share the portal login URL with your borrower. They can use their email and the password you set.",
     });
   })
 );

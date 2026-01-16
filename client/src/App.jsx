@@ -42,9 +42,16 @@ const App = () => {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           
-          {/* Client portal routes */}
+          {/* Borrower portal routes - cleaner URLs */}
+          <Route path="/portal/:tenantSlug" element={<PortalLogin />} />
+          <Route path="/borrower/:tenantSlug" element={<PortalLogin />} />
+          {/* Legacy portal URL for backwards compatibility */}
           <Route path="/t/:tenantSlug/portal/login" element={<PortalLogin />} />
+          
           <Route element={<ProtectedRoute />}>
+            <Route path="/portal/:tenantSlug/dashboard" element={<PortalDashboard />} />
+            <Route path="/borrower/:tenantSlug/dashboard" element={<PortalDashboard />} />
+            {/* Legacy */}
             <Route path="/t/:tenantSlug/portal" element={<PortalDashboard />} />
           </Route>
           

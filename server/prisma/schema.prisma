@@ -284,6 +284,7 @@ model ClientUser {
   clientId  String
   client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
   email     String
+  password  String?  // Hashed password for portal login (optional - can use magic links instead)
   name      String?
   status    String   @default("active") // active, suspended, invited
   createdAt DateTime @default(now())

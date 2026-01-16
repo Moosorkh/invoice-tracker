@@ -228,6 +228,10 @@ router.post(
     const { email, password, name } = req.body;
     const tenantId = req.user!.tenantId;
 
+    if (!tenantId) {
+      return res.status(400).json({ error: "No tenant associated with user" });
+    }
+
     if (!email || !password) {
       return res.status(400).json({ error: "Email and password are required" });
     }
@@ -271,12 +275,18 @@ router.post(
       },
     });
 
+    // Get tenant for portal URL
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { slug: true },
+    });
+
     // Return without password
-    const { password: _, ...userWithoutPassword } = portalUser;
+    const { password: _, ...userWithoutPassword } = portalUser as any;
 
     res.status(201).json({
       ...userWithoutPassword,
-      portalLoginUrl: `/t/${req.tenant?.slug || 'portal'}/login`,
+      portalLoginUrl: `/t/${tenant?.slug || 'portal'}/login`,
     });
   })
 );

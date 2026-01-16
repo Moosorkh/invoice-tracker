@@ -260,9 +260,9 @@ router.get(
     const events = await prisma.loanEvent.findMany({
       where: {
         loanId,
-        eventType: { in: ["payment_posted", "disbursement", "fee_assessed"] },
+        type: { in: ["payment_posted", "disbursement", "fee_assessed"] },
       },
-      orderBy: { eventDate: "desc" },
+      orderBy: { effectiveDate: "desc" },
       take: 50,
     });
 

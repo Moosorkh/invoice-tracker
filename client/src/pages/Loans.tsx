@@ -139,12 +139,16 @@ const Loans: React.FC = () => {
     const name = e.target.name as string;
     const value = e.target.value;
 
+    // List of numeric fields that need type conversion
+    const floatFields = ["principal", "interestRate", "lateFeeAmount", "lateFeePercent", "balloonAmount"];
+    const intFields = ["termMonths", "graceDays", "interestOnlyMonths"];
+
     setForm({
       ...form,
       [name]:
-        name === "principal" || name === "interestRate"
+        floatFields.includes(name)
           ? parseFloat(value) || 0
-          : name === "termMonths"
+          : intFields.includes(name)
           ? parseInt(value) || 0
           : value,
     });

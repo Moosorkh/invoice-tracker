@@ -355,21 +355,21 @@ router.post(
       };
 
       // Allocate to fees first
-      if (loan.currentFees > 0) {
+      if (parseFloat(loan.currentFees.toString()) > 0) {
         const feePayment = Math.min(remainingAmount, parseFloat(loan.currentFees.toString()));
         allocations.fees = feePayment;
         remainingAmount -= feePayment;
       }
 
       // Then interest
-      if (remainingAmount > 0 && loan.currentInterest > 0) {
+      if (remainingAmount > 0 && parseFloat(loan.currentInterest.toString()) > 0) {
         const interestPayment = Math.min(remainingAmount, parseFloat(loan.currentInterest.toString()));
         allocations.interest = interestPayment;
         remainingAmount -= interestPayment;
       }
 
       // Finally principal
-      if (remainingAmount > 0 && loan.currentPrincipal > 0) {
+      if (remainingAmount > 0 && parseFloat(loan.currentPrincipal.toString()) > 0) {
         const principalPayment = Math.min(remainingAmount, parseFloat(loan.currentPrincipal.toString()));
         allocations.principal = principalPayment;
         remainingAmount -= principalPayment;

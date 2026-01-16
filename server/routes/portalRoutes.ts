@@ -171,13 +171,17 @@ router.get(
       include: {
         client: {
           select: {
+            id: true,
             name: true,
             email: true,
             phone: true,
+            type: true,
             mailingAddress: true,
+            physicalAddress: true,
             city: true,
             state: true,
             zipCode: true,
+            country: true,
           },
         },
       },
@@ -189,6 +193,163 @@ router.get(
     }
 
     res.json(clientUser);
+  })
+);
+
+/**
+ * Update client profile
+ * PUT /t/:slug/portal/api/profile
+ */
+router.put(
+  "/profile",
+  routeHandler(async (req: Request, res: Response) => {
+    const userId = req.user!.userId!;
+    const clientId = req.user!.clientId!;
+    const tenantId = req.user!.tenantId!;
+    const { phone, mailingAddress, physicalAddress, city, state, zipCode } = req.body;
+
+    // Update client info (not clientUser, since that's just the portal account)
+    const updatedClient = await prisma.client.update({
+      where: { id: clientId },
+      data: {
+        phone,
+        mailingAddress,
+        physicalAddress,
+        city,
+        state,
+        zipCode,
+      },
+    });
+
+    res.json(updatedClient);
+  })
+);
+
+/**
+ * Get payment history for a specific loan
+ * GET /t/:slug/portal/api/loans/:loanId/payments
+ */
+router.get(
+  "/loans/:loanId/payments",
+  routeHandler(async (req: Request, res: Response) => {
+    const { loanId } = req.params;
+    const clientId = req.user!.clientId!;
+    const tenantId = req.user!.tenantId!;
+
+    // Verify loan belongs to client
+    const loan = await prisma.loan.findFirst({
+      where: {
+        id: loanId,
+        tenantId,
+        clientId,
+      },
+    });
+
+    if (!loan) {
+      res.status(404).json({ error: "Loan not found" });
+      return;
+    }
+
+    // Get payment history with allocation details
+    const payments = await prisma.payment.findMany({
+      where: { loanId },
+      orderBy: { createdAt: "desc" },
+    });
+
+    // Get loan events for detailed ledger view
+    const events = await prisma.loanEvent.findMany({
+      where: {
+        loanId,
+        eventType: { in: ["payment_posted", "disbursement", "fee_assessed"] },
+      },
+      orderBy: { eventDate: "desc" },
+      take: 50,
+    });
+
+    res.json({ payments, events });
+  })
+);
+
+/**
+ * Get payment schedule for a loan
+ * GET /t/:slug/portal/api/loans/:loanId/schedule
+ */
+router.get(
+  "/loans/:loanId/schedule",
+  routeHandler(async (req: Request, res: Response) => {
+    const { loanId } = req.params;
+    const clientId = req.user!.clientId!;
+    const tenantId = req.user!.tenantId!;
+
+    // Verify loan belongs to client
+    const loan = await prisma.loan.findFirst({
+      where: {
+        id: loanId,
+        tenantId,
+        clientId,
+      },
+    });
+
+    if (!loan) {
+      res.status(404).json({ error: "Loan not found" });
+      return;
+    }
+
+    const schedule = await prisma.loanPaymentSchedule.findMany({
+      where: { loanId },
+      orderBy: { dueDate: "asc" },
+    });
+
+    res.json(schedule);
+  })
+);
+
+/**
+ * Request payoff quote
+ * POST /t/:slug/portal/api/loans/:loanId/payoff-quote
+ */
+router.post(
+  "/loans/:loanId/payoff-quote",
+  routeHandler(async (req: Request, res: Response) => {
+    const { loanId } = req.params;
+    const { effectiveDate } = req.body;
+    const clientId = req.user!.clientId!;
+    const tenantId = req.user!.tenantId!;
+
+    // Verify loan belongs to client
+    const loan = await prisma.loan.findFirst({
+      where: {
+        id: loanId,
+        tenantId,
+        clientId,
+      },
+    });
+
+    if (!loan) {
+      res.status(404).json({ error: "Loan not found" });
+      return;
+    }
+
+    const quoteDate = effectiveDate ? new Date(effectiveDate) : new Date();
+    const goodThroughDate = new Date(quoteDate);
+    goodThroughDate.setDate(goodThroughDate.getDate() + 10);
+
+    // Calculate payoff amount (simplified - would need proper per-diem calculation)
+    const payoffAmount = parseFloat(loan.currentPrincipal.toString()) +
+                         parseFloat(loan.currentInterest.toString()) +
+                         parseFloat(loan.currentFees.toString());
+
+    res.json({
+      loanNumber: loan.loanNumber,
+      quoteDate: quoteDate.toISOString(),
+      goodThroughDate: goodThroughDate.toISOString(),
+      currentPrincipal: loan.currentPrincipal,
+      currentInterest: loan.currentInterest,
+      currentFees: loan.currentFees,
+      payoffAmount: payoffAmount.toFixed(2),
+      perDiemInterest: ((parseFloat(loan.principal.toString()) * parseFloat(loan.interestRate.toString()) / 100) / 365).toFixed(2),
+      message: "This is an estimated payoff quote. Please contact us for an official payoff letter.",
+    });
   })
 );
 

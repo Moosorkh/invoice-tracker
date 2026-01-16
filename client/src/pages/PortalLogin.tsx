@@ -1,11 +1,13 @@
 import React, { useState } from "react";
-import { TextField, Button, Container, Typography, Box, Alert, CircularProgress } from "@mui/material";
+import { TextField, Button, Container, Typography, Box, Alert, CircularProgress, Tabs, Tab } from "@mui/material";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 const PortalLogin = () => {
   const { tenantSlug } = useParams<{ tenantSlug: string }>();
+  const [tabValue, setTabValue] = useState(0);
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
@@ -13,6 +15,36 @@ const PortalLogin = () => {
   const [showTokenInput, setShowTokenInput] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  const handlePasswordLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+
+    try {
+      const res = await fetch(`/t/${tenantSlug}/portal/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(data.error || "Invalid credentials");
+      }
+
+      // Login with portal JWT
+      login(data.token, { userId: data.user.id, email: data.user.email });
+      
+      // Redirect to portal dashboard
+      navigate(`/t/${tenantSlug}/portal`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to log in");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleRequestLink = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,16 +108,56 @@ const PortalLogin = () => {
     <Container maxWidth="sm">
       <Box sx={{ mt: 8, mb: 4 }}>
         <Typography variant="h4" align="center" gutterBottom>
-          Client Portal Login
+          Borrower Portal
         </Typography>
         <Typography variant="body2" align="center" color="textSecondary" sx={{ mb: 4 }}>
-          Enter your email to receive a secure login link
+          Access your loans and account information
         </Typography>
+
+        <Tabs value={tabValue} onChange={(_, newValue) => setTabValue(newValue)} centered sx={{ mb: 3 }}>
+          <Tab label="Password Login" />
+          <Tab label="Magic Link" />
+        </Tabs>
 
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
         {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
 
-        {!showTokenInput ? (
+        {tabValue === 0 && (
+          <form onSubmit={handlePasswordLogin}>
+            <TextField
+              label="Email Address"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              fullWidth
+              margin="normal"
+              required
+              disabled={loading}
+            />
+            <TextField
+              label="Password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              fullWidth
+              margin="normal"
+              required
+              disabled={loading}
+            />
+            <Button
+              type="submit"
+              variant="contained"
+              color="primary"
+              fullWidth
+              sx={{ mt: 3, mb: 2 }}
+              disabled={loading}
+            >
+              {loading ? <CircularProgress size={24} /> : "Log In"}
+            </Button>
+          </form>
+        )}
+
+        {tabValue === 1 && !showTokenInput && (
           <form onSubmit={handleRequestLink}>
             <TextField
               label="Email Address"
@@ -115,7 +187,9 @@ const PortalLogin = () => {
               </Typography>
             </Box>
           </form>
-        ) : (
+        )}
+        
+        {tabValue === 1 && showTokenInput && (
           <form onSubmit={handleVerifyToken}>
             <Alert severity="info" sx={{ mb: 2 }}>
               For testing: Check the server logs on Railway for your magic link token

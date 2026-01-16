@@ -220,4 +220,99 @@ router.post(
   })
 );
 
+// Create portal user for client (borrower login)
+router.post(
+  "/:id/portal-user",
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { email, password, name } = req.body;
+    const tenantId = req.user!.tenantId;
+
+    if (!email || !password) {
+      return res.status(400).json({ error: "Email and password are required" });
+    }
+
+    // Verify client belongs to tenant
+    const client = await prisma.client.findFirst({
+      where: { id, tenantId },
+    });
+
+    if (!client) {
+      return res.status(404).json({ error: "Client not found" });
+    }
+
+    // Check if portal user already exists
+    const existingUser = await prisma.clientUser.findUnique({
+      where: {
+        tenantId_email: {
+          tenantId,
+          email: email.toLowerCase(),
+        },
+      },
+    });
+
+    if (existingUser) {
+      return res.status(409).json({ error: "A portal user with this email already exists" });
+    }
+
+    // Hash password
+    const bcrypt = require("bcryptjs");
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create portal user
+    const portalUser = await prisma.clientUser.create({
+      data: {
+        tenantId,
+        clientId: id,
+        email: email.toLowerCase(),
+        password: hashedPassword,
+        name: name || client.name,
+        status: "active",
+      },
+    });
+
+    // Return without password
+    const { password: _, ...userWithoutPassword } = portalUser;
+
+    res.status(201).json({
+      ...userWithoutPassword,
+      portalLoginUrl: `/t/${req.tenant?.slug || 'portal'}/login`,
+    });
+  })
+);
+
+// Get portal users for a client
+router.get(
+  "/:id/portal-users",
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const tenantId = req.user!.tenantId;
+
+    const client = await prisma.client.findFirst({
+      where: { id, tenantId },
+    });
+
+    if (!client) {
+      return res.status(404).json({ error: "Client not found" });
+    }
+
+    const portalUsers = await prisma.clientUser.findMany({
+      where: {
+        clientId: id,
+        tenantId,
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    res.json(portalUsers);
+  })
+);
+
 export default router;

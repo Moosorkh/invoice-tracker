@@ -11,6 +11,79 @@ import { prisma } from "../utils/prisma";
 const router = Router();
 
 /**
+ * Password-based login for client portal
+ * POST /t/:slug/portal/auth/login
+ */
+router.post(
+  "/login",
+  routeHandler(async (req: TenantRequest, res: Response) => {
+    const { email, password } = req.body;
+    const tenantId = req.tenant!.id;
+
+    if (!email || !password) {
+      res.status(400).json({ error: "Email and password are required" });
+      return;
+    }
+
+    // Find client user
+    const clientUser = await prisma.clientUser.findUnique({
+      where: {
+        tenantId_email: {
+          tenantId,
+          email: email.toLowerCase(),
+        },
+      },
+      include: {
+        client: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    if (!clientUser || clientUser.status !== "active") {
+      res.status(401).json({ error: "Invalid email or password" });
+      return;
+    }
+
+    // Verify password
+    const bcrypt = require("bcryptjs");
+    const isValidPassword = await bcrypt.compare(password, clientUser.password);
+
+    if (!isValidPassword) {
+      res.status(401).json({ error: "Invalid email or password" });
+      return;
+    }
+
+    // Generate JWT
+    const jwt = require("jsonwebtoken");
+    const token = jwt.sign(
+      {
+        userId: clientUser.id,
+        clientId: clientUser.clientId,
+        tenantId: clientUser.tenantId,
+        type: "portal",
+      },
+      process.env.JWT_SECRET || "your-secret-key",
+      { expiresIn: "7d" }
+    );
+
+    res.json({
+      success: true,
+      token,
+      user: {
+        id: clientUser.id,
+        email: clientUser.email,
+        name: clientUser.name,
+        clientName: clientUser.client.name,
+      },
+    });
+  })
+);
+
+/**
  * Request magic link for client portal access
  * POST /t/:slug/portal/auth/request-link
  */

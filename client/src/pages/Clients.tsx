@@ -19,8 +19,9 @@ import {
   Tooltip,
   DialogContentText,
   Box,
+  InputAdornment,
 } from "@mui/material";
-import { Edit, Delete } from "@mui/icons-material";
+import { Edit, Delete, Visibility, VisibilityOff } from "@mui/icons-material";
 import { useAuth } from "../context/AuthContext";
 import { getApiUrl } from "../config/api";
 
@@ -62,7 +63,7 @@ const Clients = () => {
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const { token } = useAuth();
+  const { token, tenantSlug } = useAuth();
   const [dialogError, setDialogError] = useState<string | null>(null);
   const [portalDialog, setPortalDialog] = useState<PortalUserDialogState>({
     open: false,
@@ -73,6 +74,7 @@ const Clients = () => {
   const [portalEmail, setPortalEmail] = useState("");
   const [portalPassword, setPortalPassword] = useState("");
   const [portalName, setPortalName] = useState("");
+  const [showPortalPassword, setShowPortalPassword] = useState(false);
 
   useEffect(() => {
     console.log('Clients component mounted, token:', !!token);
@@ -300,8 +302,11 @@ const Clients = () => {
       
       const result = await res.json();
       
-      // Show success message with portal URL
-      alert(`Portal user created successfully!\n\nPortal Login URL:\n${result.portalLoginUrlFull || result.portalLoginUrl}\n\nEmail: ${portalEmail}\nPassword: ${portalPassword}\n\nShare these credentials with your borrower.`);
+      // Construct portal URL using tenant slug from context
+      const portalUrl = `${window.location.origin}/portal/${tenantSlug}`;
+      
+      // Show success message with portal URL and credentials
+      alert(`✅ Portal user created successfully!\n\n🔗 Portal Login URL:\n${portalUrl}\n\n📧 Email: ${portalEmail}\n🔑 Password: ${portalPassword}\n\n👉 Share these credentials with your borrower.`);
       
       // Refresh the portal users list
       handleOpenPortalDialog({ id: portalDialog.clientId, name: portalDialog.clientName, email: "" });
@@ -610,7 +615,7 @@ const Clients = () => {
             />
             <TextField
               label="Password"
-              type="password"
+              type={showPortalPassword ? "text" : "password"}
               value={portalPassword}
               onChange={(e) => setPortalPassword(e.target.value)}
               fullWidth
@@ -618,6 +623,20 @@ const Clients = () => {
               sx={{ mb: 1 }}
               placeholder="Minimum 8 characters"
               helperText="Set a secure password for the borrower"
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      aria-label="toggle password visibility"
+                      onClick={() => setShowPortalPassword(!showPortalPassword)}
+                      edge="end"
+                      size="small"
+                    >
+                      {showPortalPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
             />
             <Button
               variant="contained"

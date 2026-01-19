@@ -1,5 +1,6 @@
-import React, { useState } from "react";
-import { TextField, Button, Container, Typography, Box, Alert, CircularProgress, Tabs, Tab } from "@mui/material";
+import React, { useState, useEffect } from "react";
+import { TextField, Button, Container, Typography, Box, Alert, CircularProgress, Tabs, Tab, IconButton, InputAdornment } from "@mui/material";
+import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
@@ -8,6 +9,7 @@ const PortalLogin = () => {
   const [tabValue, setTabValue] = useState(0);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
@@ -15,6 +17,13 @@ const PortalLogin = () => {
   const [showTokenInput, setShowTokenInput] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  // Validate tenant slug
+  useEffect(() => {
+    if (!tenantSlug) {
+      setError("Invalid portal URL. Please use the link provided by your lender.");
+    }
+  }, [tenantSlug]);
 
   const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -136,13 +145,26 @@ const PortalLogin = () => {
             />
             <TextField
               label="Password"
-              type="password"
+              type={showPassword ? "text" : "password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               fullWidth
               margin="normal"
               required
               disabled={loading}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      aria-label="toggle password visibility"
+                      onClick={() => setShowPassword(!showPassword)}
+                      edge="end"
+                    >
+                      {showPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
             />
             <Button
               type="submit"

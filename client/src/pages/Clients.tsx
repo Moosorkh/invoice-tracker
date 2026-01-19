@@ -19,9 +19,9 @@ import {
   Tooltip,
   DialogContentText,
   Box,
-  InputAdornment,
+  Chip,
 } from "@mui/material";
-import { Edit, Delete, Visibility, VisibilityOff } from "@mui/icons-material";
+import { Edit, Delete, LockReset } from "@mui/icons-material";
 import { useAuth } from "../context/AuthContext";
 import { getApiUrl } from "../config/api";
 
@@ -72,9 +72,7 @@ const Clients = () => {
     portalUsers: [],
   });
   const [portalEmail, setPortalEmail] = useState("");
-  const [portalPassword, setPortalPassword] = useState("");
   const [portalName, setPortalName] = useState("");
-  const [showPortalPassword, setShowPortalPassword] = useState(false);
 
   useEffect(() => {
     console.log('Clients component mounted, token:', !!token);
@@ -270,18 +268,13 @@ const Clients = () => {
   };
 
   const handleCreatePortalUser = async () => {
-    if (!portalEmail || !portalPassword || !portalDialog.clientId) {
-      alert("Email and password are required");
-      return;
-    }
-    
-    if (portalPassword.length < 8) {
-      alert("Password must be at least 8 characters");
+    if (!portalEmail || !portalDialog.clientId) {
+      alert("Email is required");
       return;
     }
     
     try {
-      const res = await fetch(getApiUrl(`/api/clients/${portalDialog.clientId}/portal-user`), {
+      const res = await fetch(getApiUrl(`/api/clients/${portalDialog.clientId}/portal-user/invite`), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -289,30 +282,57 @@ const Clients = () => {
         },
         body: JSON.stringify({ 
           email: portalEmail,
-          password: portalPassword,
           name: portalName || portalDialog.clientName,
         }),
       });
       
       if (!res.ok) {
         const error = await res.json();
-        alert(error.error || "Failed to create portal user");
+        alert(error.error || "Failed to send invite");
         return;
       }
       
       const result = await res.json();
       
-      // Construct portal URL using tenant slug from context
-      const portalUrl = `${window.location.origin}/portal/${tenantSlug}`;
+      // Show success message with invite link
+      alert(`✅ Invite sent successfully!\n\n🔗 Invite Link (expires in 7 days):\n${result.inviteUrl}\n\n👉 Share this link with your borrower to set their password.`);
       
-      // Show success message with portal URL and credentials
-      alert(`✅ Portal user created successfully!\n\n🔗 Portal Login URL:\n${portalUrl}\n\n📧 Email: ${portalEmail}\n🔑 Password: ${portalPassword}\n\n👉 Share these credentials with your borrower.`);
+      // Reset form
+      setPortalEmail("");
+      setPortalName("");
       
       // Refresh the portal users list
       handleOpenPortalDialog({ id: portalDialog.clientId, name: portalDialog.clientName, email: "" });
     } catch (error) {
-      console.error("Error creating portal user:", error);
-      alert("Failed to create portal user");
+      console.error("Error sending invite:", error);
+      alert("Failed to send invite");
+    }
+  };
+
+  const handleResetPassword = async (portalUserId: string) => {
+    if (!portalDialog.clientId) return;
+    
+    try {
+      const res = await fetch(getApiUrl(`/api/clients/${portalDialog.clientId}/portal-users/${portalUserId}/reset-password`), {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      
+      if (!res.ok) {
+        const error = await res.json();
+        alert(error.error || "Failed to send reset link");
+        return;
+      }
+      
+      const result = await res.json();
+      
+      // Show success message with reset link
+      alert(`✅ Password reset link sent!\n\n🔗 Reset Link (expires in 1 hour):\n${result.resetUrl}\n\n👉 Share this link with your borrower to reset their password.`);
+    } catch (error) {
+      console.error("Error sending reset link:", error);
+      alert("Failed to send reset link");
     }
   };
 
@@ -591,7 +611,7 @@ const Clients = () => {
         <DialogTitle>Portal Access - {portalDialog.clientName}</DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
-            Create a borrower portal account. The borrower can login with email and password.
+            Send an invite link to your borrower. They'll set their own password.
           </Typography>
           <Box sx={{ mb: 2 }}>
             <TextField
@@ -613,39 +633,14 @@ const Clients = () => {
               sx={{ mb: 1 }}
               placeholder="borrower@example.com"
             />
-            <TextField
-              label="Password"
-              type={showPortalPassword ? "text" : "password"}
-              value={portalPassword}
-              onChange={(e) => setPortalPassword(e.target.value)}
-              fullWidth
-              size="small"
-              sx={{ mb: 1 }}
-              placeholder="Minimum 8 characters"
-              helperText="Set a secure password for the borrower"
-              InputProps={{
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton
-                      aria-label="toggle password visibility"
-                      onClick={() => setShowPortalPassword(!showPortalPassword)}
-                      edge="end"
-                      size="small"
-                    >
-                      {showPortalPassword ? <VisibilityOff /> : <Visibility />}
-                    </IconButton>
-                  </InputAdornment>
-                ),
-              }}
-            />
             <Button
               variant="contained"
               onClick={handleCreatePortalUser}
               fullWidth
               sx={{ mt: 1 }}
-              disabled={!portalEmail || !portalPassword}
+              disabled={!portalEmail}
             >
-              Create Portal User
+              Send Invite
             </Button>
           </Box>
           {portalDialog.portalUsers.length > 0 && (
@@ -658,7 +653,8 @@ const Clients = () => {
                   <TableHead>
                     <TableRow>
                       <TableCell>Email</TableCell>
-                      <TableCell>Action</TableCell>
+                      <TableCell>Status</TableCell>
+                      <TableCell>Actions</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -666,9 +662,23 @@ const Clients = () => {
                       <TableRow key={pu.id}>
                         <TableCell>{pu.email}</TableCell>
                         <TableCell>
-                          <IconButton size="small" onClick={() => handleDeletePortalUser(pu.id)}>
-                            <Delete fontSize="small" />
-                          </IconButton>
+                          <Chip 
+                            label={pu.status} 
+                            size="small" 
+                            color={pu.status === 'active' ? 'success' : 'warning'}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Tooltip title="Reset Password">
+                            <IconButton size="small" onClick={() => handleResetPassword(pu.id)}>
+                              <LockReset fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Delete">
+                            <IconButton size="small" onClick={() => handleDeletePortalUser(pu.id)}>
+                              <Delete fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
                         </TableCell>
                       </TableRow>
                     ))}

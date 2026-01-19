@@ -25,6 +25,7 @@ export async function generatePortalAuthToken(
   // Store token in database
   await prisma.portalAuthToken.create({
     data: {
+      type: "magic_link",
       email,
       tenantId,
       token,

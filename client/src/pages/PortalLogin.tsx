@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { TextField, Button, Container, Typography, Box, Alert, CircularProgress, Tabs, Tab, IconButton, InputAdornment } from "@mui/material";
+import { TextField, Button, Container, Typography, Box, Alert, CircularProgress, Tabs, Tab, IconButton, InputAdornment, Link } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -171,11 +171,23 @@ const PortalLogin = () => {
               variant="contained"
               color="primary"
               fullWidth
-              sx={{ mt: 3, mb: 2 }}
+              sx={{ mt: 3, mb: 1 }}
               disabled={loading}
             >
               {loading ? <CircularProgress size={24} /> : "Log In"}
             </Button>
+            <Box sx={{ textAlign: "center", mt: 1 }}>
+              <Link
+                component="button"
+                variant="body2"
+                onClick={(e: React.MouseEvent) => {
+                  e.preventDefault();
+                  navigate(`/portal/${slug}/forgot-password`);
+                }}
+              >
+                Forgot your password?
+              </Link>
+            </Box>
           </form>
         )}
 

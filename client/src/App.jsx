@@ -14,6 +14,8 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import PortalLogin from "./pages/PortalLogin";
 import PortalDashboard from "./pages/PortalDashboard";
+import SetPassword from "./pages/SetPassword";
+import ForgotPassword from "./pages/ForgotPassword";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 // Redirect root to tenant-scoped URL if tenant exists
@@ -41,7 +43,9 @@ const ConditionalNavbar = () => {
                         location.pathname.includes('/portal');
   
   // Don't show navbar on login pages
-  if (location.pathname.includes('/login')) {
+  if (location.pathname.includes('/login') || 
+      location.pathname.includes('/set-password') ||
+      location.pathname.includes('/forgot-password')) {
     return null;
   }
   
@@ -60,6 +64,8 @@ const App = () => {
           
           {/* Borrower portal routes - cleaner URLs */}
           <Route path="/portal/:tenantSlug" element={<PortalLogin />} />
+          <Route path="/portal/:tenantSlug/set-password" element={<SetPassword />} />
+          <Route path="/portal/:tenantSlug/forgot-password" element={<ForgotPassword />} />
           <Route path="/borrower/:tenantSlug" element={<PortalLogin />} />
           {/* Legacy portal URL for backwards compatibility */}
           <Route path="/t/:tenantSlug/portal/login" element={<PortalLogin />} />

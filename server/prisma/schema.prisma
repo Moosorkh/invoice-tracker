@@ -296,19 +296,24 @@ model ClientUser {
   @@index([email])
 }
 
-// Magic link / OTP tokens for client portal authentication
+// Invite / Reset / Magic link tokens for client portal authentication
 model PortalAuthToken {
-  id        String   @id @default(uuid())
-  email     String
-  tenantId  String
-  token     String   @unique
-  expiresAt DateTime
-  used      Boolean  @default(false)
-  createdAt DateTime @default(now())
+  id            String   @id @default(uuid())
+  type          String   // invite, reset, magic_link
+  email         String
+  tenantId      String
+  portalUserId  String?  // If null, it's for creating a new user (invite)
+  token         String   @unique
+  expiresAt     DateTime
+  used          Boolean  @default(false)
+  usedAt        DateTime?
+  createdAt     DateTime @default(now())
 
   @@index([token])
   @@index([email, tenantId])
+  @@index([portalUserId])
   @@index([expiresAt])
+  @@index([type])
 }
 
 // ========================================

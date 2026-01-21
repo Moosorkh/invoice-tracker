@@ -221,6 +221,15 @@ router.post(
 );
 
 // Create portal user for client (borrower login)
+// Backward-compatible endpoint (old clients) -> delegate to invite
+router.post(
+  "/:id/portal-user",
+  asyncHandler(async (req, res) => {
+    req.url = `/` + req.params.id + `/portal-user/invite`;
+    return router.handle(req, res);
+  })
+);
+
 router.post(
   "/:id/portal-user/invite",
   asyncHandler(async (req, res) => {

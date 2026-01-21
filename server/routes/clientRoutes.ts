@@ -393,6 +393,87 @@ router.post(
   })
 );
 
+// Create portal user with direct password (admin sets password)
+router.post(
+  "/:id/portal-user/direct",
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { email, password, name } = req.body;
+    const tenantId = req.user!.tenantId;
+
+    if (!tenantId) {
+      return res.status(400).json({ error: "No tenant associated with user" });
+    }
+
+    if (!email || !password) {
+      return res.status(400).json({ error: "Email and password are required" });
+    }
+
+    if (password.length < 8) {
+      return res.status(400).json({ error: "Password must be at least 8 characters" });
+    }
+
+    // Verify client belongs to tenant
+    const client = await prisma.client.findFirst({
+      where: { id, tenantId },
+    });
+
+    if (!client) {
+      return res.status(404).json({ error: "Client not found" });
+    }
+
+    // Check if portal user already exists
+    const existingUser = await prisma.clientUser.findUnique({
+      where: {
+        tenantId_email: {
+          tenantId,
+          email: email.toLowerCase(),
+        },
+      },
+    });
+
+    if (existingUser) {
+      return res.status(409).json({ error: "A portal user with this email already exists" });
+    }
+
+    // Get tenant for portal URL
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { slug: true },
+    });
+
+    if (!tenant) {
+      return res.status(404).json({ error: "Tenant not found" });
+    }
+
+    // Hash password
+    const bcrypt = require("bcryptjs");
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create portal user with password
+    const portalUser = await prisma.clientUser.create({
+      data: {
+        tenantId,
+        clientId: id,
+        email: email.toLowerCase(),
+        password: hashedPassword,
+        name: name || client.name,
+        status: "active", // Active immediately since password is set
+      },
+    });
+
+    // Return without password
+    const { password: _, ...userWithoutPassword } = portalUser as any;
+
+    res.status(201).json({
+      ...userWithoutPassword,
+      portalLoginUrl: `/portal/${tenant.slug}`,
+      portalLoginUrlFull: `${process.env.FRONTEND_URL || 'https://invoice-tracker.up.railway.app'}/portal/${tenant.slug}`,
+      instructions: "Share the portal login URL with your borrower. They can use their email and the password you set.",
+    });
+  })
+);
+
 // Get portal users for a client
 router.get(
   "/:id/portal-users",

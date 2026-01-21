@@ -20,8 +20,11 @@ import {
   DialogContentText,
   Box,
   Chip,
+  FormControlLabel,
+  Switch,
+  InputAdornment,
 } from "@mui/material";
-import { Edit, Delete, LockReset } from "@mui/icons-material";
+import { Edit, Delete, LockReset, Visibility, VisibilityOff } from "@mui/icons-material";
 import { useAuth } from "../context/AuthContext";
 import { getApiUrl } from "../config/api";
 
@@ -73,6 +76,9 @@ const Clients = () => {
   });
   const [portalEmail, setPortalEmail] = useState("");
   const [portalName, setPortalName] = useState("");
+  const [portalPassword, setPortalPassword] = useState("");
+  const [showPortalPassword, setShowPortalPassword] = useState(false);
+  const [useDirectPassword, setUseDirectPassword] = useState(false);
 
   useEffect(() => {
     console.log('Clients component mounted, token:', !!token);
@@ -272,9 +278,18 @@ const Clients = () => {
       alert("Email is required");
       return;
     }
+
+    if (useDirectPassword && (!portalPassword || portalPassword.length < 8)) {
+      alert("Password must be at least 8 characters");
+      return;
+    }
     
     try {
-      const res = await fetch(getApiUrl(`/api/clients/${portalDialog.clientId}/portal-user/invite`), {
+      const endpoint = useDirectPassword 
+        ? `/api/clients/${portalDialog.clientId}/portal-user/direct`
+        : `/api/clients/${portalDialog.clientId}/portal-user/invite`;
+      
+      const res = await fetch(getApiUrl(endpoint), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -283,29 +298,36 @@ const Clients = () => {
         body: JSON.stringify({ 
           email: portalEmail,
           name: portalName || portalDialog.clientName,
+          ...(useDirectPassword && { password: portalPassword }),
         }),
       });
       
       if (!res.ok) {
         const error = await res.json();
-        alert(error.error || "Failed to send invite");
+        alert(error.error || useDirectPassword ? "Failed to create portal user" : "Failed to send invite");
         return;
       }
       
       const result = await res.json();
       
-      // Show success message with invite link
-      alert(`✅ Invite sent successfully!\n\n🔗 Invite Link (expires in 7 days):\n${result.inviteUrl}\n\n👉 Share this link with your borrower to set their password.`);
+      // Show success message
+      if (useDirectPassword) {
+        alert(`✅ Portal user created successfully!\n\n🔗 Portal Login URL:\n${window.location.origin}/portal/${tenantSlug}\n\n📧 Email: ${portalEmail}\n🔑 Password: ${portalPassword}\n\n👉 Share these credentials with your borrower.`);
+      } else {
+        alert(`✅ Invite sent successfully!\n\n🔗 Invite Link (expires in 7 days):\n${result.inviteUrl}\n\n👉 Share this link with your borrower to set their password.`);
+      }
       
       // Reset form
       setPortalEmail("");
       setPortalName("");
+      setPortalPassword("");
+      setShowPortalPassword(false);
       
       // Refresh the portal users list
       handleOpenPortalDialog({ id: portalDialog.clientId, name: portalDialog.clientName, email: "" });
     } catch (error) {
-      console.error("Error sending invite:", error);
-      alert("Failed to send invite");
+      console.error("Error creating portal user:", error);
+      alert("Failed to create portal user");
     }
   };
 
@@ -610,8 +632,21 @@ const Clients = () => {
       <Dialog open={portalDialog.open} onClose={() => setPortalDialog({ ...portalDialog, open: false })} maxWidth="sm" fullWidth>
         <DialogTitle>Portal Access - {portalDialog.clientName}</DialogTitle>
         <DialogContent>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={useDirectPassword}
+                onChange={(e) => setUseDirectPassword(e.target.checked)}
+              />
+            }
+            label={useDirectPassword ? "Set password now" : "Send invite link"}
+            sx={{ mb: 2 }}
+          />
           <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
-            Send an invite link to your borrower. They'll set their own password.
+            {useDirectPassword 
+              ? "Create a portal user with a password. You'll need to share the credentials."
+              : "Send an invite link to your borrower. They'll set their own password."
+            }
           </Typography>
           <Box sx={{ mb: 2 }}>
             <TextField
@@ -633,14 +668,40 @@ const Clients = () => {
               sx={{ mb: 1 }}
               placeholder="borrower@example.com"
             />
+            {useDirectPassword && (
+              <TextField
+                label="Password"
+                type={showPortalPassword ? "text" : "password"}
+                value={portalPassword}
+                onChange={(e) => setPortalPassword(e.target.value)}
+                fullWidth
+                size="small"
+                sx={{ mb: 1 }}
+                placeholder="Minimum 8 characters"
+                helperText="Set a secure password for the borrower"
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        onClick={() => setShowPortalPassword(!showPortalPassword)}
+                        edge="end"
+                        size="small"
+                      >
+                        {showPortalPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            )}
             <Button
               variant="contained"
               onClick={handleCreatePortalUser}
               fullWidth
               sx={{ mt: 1 }}
-              disabled={!portalEmail}
+              disabled={!portalEmail || (useDirectPassword && (!portalPassword || portalPassword.length < 8))}
             >
-              Send Invite
+              {useDirectPassword ? "Create User" : "Send Invite"}
             </Button>
           </Box>
           {portalDialog.portalUsers.length > 0 && (

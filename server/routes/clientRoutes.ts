@@ -221,15 +221,6 @@ router.post(
 );
 
 // Create portal user for client (borrower login)
-// Backward-compatible endpoint (old clients) -> delegate to invite
-router.post(
-  "/:id/portal-user",
-  asyncHandler(async (req, res) => {
-    req.url = `/` + req.params.id + `/portal-user/invite`;
-    return router.handle(req, res);
-  })
-);
-
 router.post(
   "/:id/portal-user/invite",
   asyncHandler(async (req, res) => {
@@ -304,6 +295,91 @@ router.post(
 
     // TODO: In production, send this via email
     // For now, return it in the response
+
+    res.status(201).json({
+      id: portalUser.id,
+      email: portalUser.email,
+      name: portalUser.name,
+      status: portalUser.status,
+      inviteUrl,
+      expiresAt,
+      instructions: "Share this invite link with your borrower. They will use it to set their password. Link expires in 7 days.",
+    });
+  })
+);
+
+// Backward-compatible endpoint (old client builds still call /portal-user without /invite)
+router.post(
+  "/:id/portal-user",
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { email, name } = req.body;
+    const tenantId = req.user!.tenantId;
+
+    if (!tenantId) {
+      return res.status(400).json({ error: "No tenant associated with user" });
+    }
+
+    if (!email) {
+      return res.status(400).json({ error: "Email is required" });
+    }
+
+    // Verify client belongs to tenant
+    const client = await prisma.client.findFirst({
+      where: { id, tenantId },
+    });
+
+    if (!client) {
+      return res.status(404).json({ error: "Client not found" });
+    }
+
+    // Check if portal user already exists
+    const existingUser = await prisma.clientUser.findUnique({
+      where: {
+        tenantId_email: {
+          tenantId,
+          email: email.toLowerCase(),
+        },
+      },
+    });
+
+    if (existingUser) {
+      return res.status(409).json({ error: "A portal user with this email already exists" });
+    }
+
+    // Get tenant for portal URL
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { slug: true },
+    });
+
+    if (!tenant) {
+      return res.status(404).json({ error: "Tenant not found" });
+    }
+
+    // Create portal user without password (they'll set it via invite link)
+    const portalUser = await prisma.clientUser.create({
+      data: {
+        tenantId,
+        clientId: id,
+        email: email.toLowerCase(),
+        password: "", // Empty password - user will set it via invite token
+        name: name || client.name,
+        status: "pending", // Pending until they set their password
+      },
+    });
+
+    // Generate invite token
+    const { generatePortalToken } = require("../utils/portalTokens");
+    const { token, expiresAt } = await generatePortalToken(
+      tenantId,
+      email,
+      "invite",
+      portalUser.id
+    );
+
+    // Construct invite URL
+    const inviteUrl = `${process.env.FRONTEND_URL || 'https://invoice-tracker.up.railway.app'}/portal/${tenant.slug}/set-password?token=${token}`;
 
     res.status(201).json({
       id: portalUser.id,

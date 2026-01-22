@@ -79,6 +79,13 @@ const Clients = () => {
   const [portalPassword, setPortalPassword] = useState("");
   const [showPortalPassword, setShowPortalPassword] = useState(false);
   const [useDirectPassword, setUseDirectPassword] = useState(false);
+  const [resetPasswordDialog, setResetPasswordDialog] = useState<{
+    open: boolean;
+    userId: string | null;
+    userEmail: string;
+    newPassword: string;
+    showPassword: boolean;
+  }>({ open: false, userId: null, userEmail: "", newPassword: "", showPassword: false });
 
   useEffect(() => {
     console.log('Clients component mounted, token:', !!token);
@@ -312,7 +319,8 @@ const Clients = () => {
       
       // Show success message
       if (useDirectPassword) {
-        alert(`✅ Portal user created successfully!\n\n🔗 Portal Login URL:\n${window.location.origin}/portal/${tenantSlug}\n\n📧 Email: ${portalEmail}\n🔑 Password: ${portalPassword}\n\n👉 Share these credentials with your borrower.`);
+        const portalUrl = result.portalLoginUrlFull || `${window.location.origin}/portal/${tenantSlug}`;
+        alert(`✅ Portal user created successfully!\n\n🔗 Portal Login URL:\n${portalUrl}\n\n📧 Email: ${portalEmail}\n🔑 Password: ${portalPassword}\n\n👉 Share these credentials with your borrower.`);
       } else {
         alert(`✅ Invite sent successfully!\n\n🔗 Invite Link (expires in 7 days):\n${result.inviteUrl}\n\n👉 Share this link with your borrower to set their password.`);
       }
@@ -331,11 +339,58 @@ const Clients = () => {
     }
   };
 
-  const handleResetPassword = async (portalUserId: string) => {
-    if (!portalDialog.clientId) return;
+  const handleResetPassword = (portalUserId: string, userEmail: string) => {
+    setResetPasswordDialog({
+      open: true,
+      userId: portalUserId,
+      userEmail,
+      newPassword: "",
+      showPassword: false,
+    });
+  };
+
+  const handleDirectPasswordReset = async () => {
+    if (!portalDialog.clientId || !resetPasswordDialog.userId) return;
+
+    if (!resetPasswordDialog.newPassword || resetPasswordDialog.newPassword.length < 8) {
+      alert("Password must be at least 8 characters");
+      return;
+    }
+
+    try {
+      const res = await fetch(
+        getApiUrl(`/api/clients/${portalDialog.clientId}/portal-users/${resetPasswordDialog.userId}/reset-password/direct`),
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ password: resetPasswordDialog.newPassword }),
+        }
+      );
+
+      if (!res.ok) {
+        const error = await res.json();
+        alert(error.error || "Failed to reset password");
+        return;
+      }
+
+      alert(`✅ Password reset successfully!\n\n📧 Email: ${resetPasswordDialog.userEmail}\n🔑 New Password: ${resetPasswordDialog.newPassword}`);
+      
+      setResetPasswordDialog({ open: false, userId: null, userEmail: "", newPassword: "", showPassword: false });
+      handleOpenPortalDialog({ id: portalDialog.clientId, name: portalDialog.clientName, email: "" });
+    } catch (error) {
+      console.error("Error resetting password:", error);
+      alert("Failed to reset password");
+    }
+  };
+
+  const handleSendResetLink = async () => {
+    if (!portalDialog.clientId || !resetPasswordDialog.userId) return;
     
     try {
-      const res = await fetch(getApiUrl(`/api/clients/${portalDialog.clientId}/portal-users/${portalUserId}/reset-password`), {
+      const res = await fetch(getApiUrl(`/api/clients/${portalDialog.clientId}/portal-users/${resetPasswordDialog.userId}/reset-password`), {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -350,8 +405,8 @@ const Clients = () => {
       
       const result = await res.json();
       
-      // Show success message with reset link
       alert(`✅ Password reset link sent!\n\n🔗 Reset Link (expires in 1 hour):\n${result.resetUrl}\n\n👉 Share this link with your borrower to reset their password.`);
+      setResetPasswordDialog({ open: false, userId: null, userEmail: "", newPassword: "", showPassword: false });
     } catch (error) {
       console.error("Error sending reset link:", error);
       alert("Failed to send reset link");
@@ -731,7 +786,7 @@ const Clients = () => {
                         </TableCell>
                         <TableCell>
                           <Tooltip title="Reset Password">
-                            <IconButton size="small" onClick={() => handleResetPassword(pu.id)}>
+                            <IconButton size="small" onClick={() => handleResetPassword(pu.id, pu.email)}>
                               <LockReset fontSize="small" />
                             </IconButton>
                           </Tooltip>
@@ -754,6 +809,65 @@ const Clients = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setPortalDialog({ ...portalDialog, open: false })}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Password Reset Dialog */}
+      <Dialog 
+        open={resetPasswordDialog.open} 
+        onClose={() => setResetPasswordDialog({ ...resetPasswordDialog, open: false })}
+        maxWidth="sm" 
+        fullWidth
+      >
+        <DialogTitle>Reset Password - {resetPasswordDialog.userEmail}</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+            Choose to send a reset link or set a new password directly.
+          </Typography>
+          <TextField
+            label="New Password"
+            type={resetPasswordDialog.showPassword ? "text" : "password"}
+            value={resetPasswordDialog.newPassword}
+            onChange={(e) => setResetPasswordDialog({ ...resetPasswordDialog, newPassword: e.target.value })}
+            fullWidth
+            size="small"
+            sx={{ mb: 2 }}
+            placeholder="Minimum 8 characters"
+            helperText="Set a new password for the borrower"
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton
+                    onClick={() => setResetPasswordDialog({ ...resetPasswordDialog, showPassword: !resetPasswordDialog.showPassword })}
+                    edge="end"
+                    size="small"
+                  >
+                    {resetPasswordDialog.showPassword ? <VisibilityOff /> : <Visibility />}
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
+          />
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button
+              variant="contained"
+              onClick={handleDirectPasswordReset}
+              fullWidth
+              disabled={!resetPasswordDialog.newPassword || resetPasswordDialog.newPassword.length < 8}
+            >
+              Set Password
+            </Button>
+            <Button
+              variant="outlined"
+              onClick={handleSendResetLink}
+              fullWidth
+            >
+              Send Reset Link
+            </Button>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setResetPasswordDialog({ ...resetPasswordDialog, open: false })}>Cancel</Button>
         </DialogActions>
       </Dialog>
     </Container>

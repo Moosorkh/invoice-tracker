@@ -574,6 +574,64 @@ router.post(
   })
 );
 
+// Direct password reset (admin sets new password)
+router.post(
+  "/:id/portal-users/:userId/reset-password/direct",
+  asyncHandler(async (req, res) => {
+    const { id, userId } = req.params;
+    const { password } = req.body;
+    const tenantId = req.user!.tenantId;
+
+    if (!tenantId) {
+      return res.status(400).json({ error: "No tenant associated with user" });
+    }
+
+    if (!password || password.length < 8) {
+      return res.status(400).json({ error: "Password must be at least 8 characters" });
+    }
+
+    // Verify client belongs to tenant
+    const client = await prisma.client.findFirst({
+      where: { id, tenantId },
+    });
+
+    if (!client) {
+      return res.status(404).json({ error: "Client not found" });
+    }
+
+    // Verify portal user belongs to this client and tenant
+    const portalUser = await prisma.clientUser.findFirst({
+      where: {
+        id: userId,
+        clientId: id,
+        tenantId,
+      },
+    });
+
+    if (!portalUser) {
+      return res.status(404).json({ error: "Portal user not found" });
+    }
+
+    // Hash new password
+    const bcrypt = require("bcryptjs");
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Update password and set status to active
+    await prisma.clientUser.update({
+      where: { id: userId },
+      data: {
+        password: hashedPassword,
+        status: "active",
+      },
+    });
+
+    res.json({
+      success: true,
+      message: "Password reset successfully",
+    });
+  })
+);
+
 // Delete portal user
 router.delete(
   "/:id/portal-users/:userId",

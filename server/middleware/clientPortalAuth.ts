@@ -22,8 +22,9 @@ export const clientPortalAuthMiddleware: RequestHandler = async (req, res, next)
   try {
     const payload = jwt.verify(token, JWT_SECRET) as any;
     
-    // Ensure this is a client portal user token
-    if (payload.userType !== "client") {
+    // Ensure this is a client portal user token (accept new and legacy formats)
+    const isClientPortalToken = payload.userType === "client" || payload.type === "portal";
+    if (!isClientPortalToken) {
       res.status(403).json({ error: "Access denied: Not a client portal user" });
       return;
     }

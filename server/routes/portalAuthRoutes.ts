@@ -71,6 +71,7 @@ router.post(
         userId: clientUser.id,
         clientId: clientUser.clientId,
         tenantId: clientUser.tenantId,
+        userType: "client",
         type: "portal",
       },
       process.env.JWT_SECRET || "your-secret-key",

@@ -3,6 +3,7 @@ import { authMiddleware } from "../middleware/authMiddleware";
 import { checkClientLimit } from "../middleware/usageLimits";
 import { asyncHandler } from "../utils/routeHandler";
 import { prisma } from "../utils/prisma";
+import { sendPortalInviteEmail } from "../utils/emailService";
 import {
   createClientSchema,
   updateClientSchema,
@@ -293,17 +294,20 @@ router.post(
     // Construct invite URL
     const inviteUrl = `${process.env.FRONTEND_URL || 'https://invoice-tracker.up.railway.app'}/portal/${tenant.slug}/set-password?token=${token}`;
 
-    // TODO: In production, send this via email
-    // For now, return it in the response
+    // Send invite email
+    await sendPortalInviteEmail(
+      email,
+      tenant.slug,
+      token,
+      client.name
+    );
 
     res.status(201).json({
       id: portalUser.id,
       email: portalUser.email,
       name: portalUser.name,
       status: portalUser.status,
-      inviteUrl,
-      expiresAt,
-      instructions: "Share this invite link with your borrower. They will use it to set their password. Link expires in 7 days.",
+      message: "Portal invite sent successfully. The user will receive an email with instructions to set their password.",
     });
   })
 );
@@ -381,14 +385,20 @@ router.post(
     // Construct invite URL
     const inviteUrl = `${process.env.FRONTEND_URL || 'https://invoice-tracker.up.railway.app'}/portal/${tenant.slug}/set-password?token=${token}`;
 
+    // Send invite email
+    await sendPortalInviteEmail(
+      email,
+      tenant.slug,
+      token,
+      client.name
+    );
+
     res.status(201).json({
       id: portalUser.id,
       email: portalUser.email,
       name: portalUser.name,
       status: portalUser.status,
-      inviteUrl,
-      expiresAt,
-      instructions: "Share this invite link with your borrower. They will use it to set their password. Link expires in 7 days.",
+      message: "Portal invite sent successfully. The user will receive an email with instructions to set their password.",
     });
   })
 );

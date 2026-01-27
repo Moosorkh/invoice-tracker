@@ -4,11 +4,30 @@ import { routeHandler } from "../utils/routeHandler";
 import {
   generatePortalAuthToken,
   verifyPortalAuthToken,
-  sendMagicLinkEmail,
 } from "../utils/portalAuth";
+import { sendMagicLinkEmail, sendPasswordResetEmail } from "../utils/emailService";
 import { prisma } from "../utils/prisma";
+import rateLimit from "express-rate-limit";
 
 const router = Router();
+
+// Rate limiter for login attempts (5 attempts per 15 minutes per IP)
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5,
+  message: "Too many login attempts, please try again later",
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Rate limiter for magic link/password reset requests (3 requests per 15 minutes per IP)
+const emailLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 3,
+  message: "Too many requests, please try again later",
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 /**
  * Password-based login for client portal
@@ -16,6 +35,7 @@ const router = Router();
  */
 router.post(
   "/login",
+  loginLimiter,
   routeHandler(async (req: TenantRequest, res: Response) => {
     const { email, password } = req.body;
     const tenantId = req.tenant!.id;
@@ -97,6 +117,7 @@ router.post(
  */
 router.post(
   "/request-link",
+  emailLimiter,
   routeHandler(async (req: TenantRequest, res: Response) => {
     const { email } = req.body;
     const tenantId = req.tenant!.id;
@@ -138,13 +159,8 @@ router.post(
     // Generate magic link token
     const token = await generatePortalAuthToken(email.toLowerCase(), tenantId);
 
-    // Construct base URL
-    const protocol = req.protocol;
-    const host = req.get("host");
-    const baseUrl = `${protocol}://${host}`;
-
     // Send magic link email
-    await sendMagicLinkEmail(email, tenantSlug, token, baseUrl);
+    await sendMagicLinkEmail(email, tenantSlug, token);
 
     res.json({
       success: true,
@@ -272,6 +288,7 @@ router.post(
  */
 router.post(
   "/forgot-password",
+  emailLimiter,
   routeHandler(async (req: TenantRequest, res: Response) => {
     const { email } = req.body;
     const tenantId = req.tenant!.id;
@@ -295,7 +312,7 @@ router.post(
     // But only send email if user exists
     if (portalUser) {
       const { generatePortalToken } = require("../utils/portalTokens");
-      const { token, expiresAt } = await generatePortalToken(
+      const { token } = await generatePortalToken(
         tenantId,
         email,
         "reset",
@@ -308,10 +325,9 @@ router.post(
         select: { slug: true },
       });
 
-      const resetUrl = `${process.env.FRONTEND_URL || 'https://invoice-tracker.up.railway.app'}/portal/${tenant?.slug}/set-password?token=${token}`;
-
-      // TODO: Send email with resetUrl
-      console.log(`Password reset link for ${email}: ${resetUrl} (expires ${expiresAt})`);
+      if (tenant?.slug) {
+        await sendPasswordResetEmail(email, tenant.slug, token);
+      }
     }
 
     res.json({

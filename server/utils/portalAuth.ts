@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { prisma } from "../utils/prisma";
 import jwt from "jsonwebtoken";
+import { sendMagicLinkEmail as sendMagicLinkEmailService } from "./emailService";
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 const TOKEN_EXPIRY_MINUTES = 15; // Magic link valid for 15 minutes
@@ -122,30 +123,12 @@ export async function cleanupExpiredTokens(): Promise<number> {
 }
 
 /**
- * Send magic link email (placeholder - integrate with your email service)
+ * Send magic link email
  */
 export async function sendMagicLinkEmail(
   email: string,
   tenantSlug: string,
-  token: string,
-  baseUrl: string
+  token: string
 ): Promise<void> {
-  const magicLink = `${baseUrl}/t/${tenantSlug}/portal/auth/verify?token=${token}`;
-  
-  // TODO: Integrate with SendGrid, Mailgun, or other email service
-  console.log(`
-==============================================
-MAGIC LINK FOR: ${email}
-Tenant: ${tenantSlug}
-Link: ${magicLink}
-Expires in ${TOKEN_EXPIRY_MINUTES} minutes
-==============================================
-  `);
-  
-  // In production, replace with:
-  // await emailService.send({
-  //   to: email,
-  //   subject: "Your login link",
-  //   html: `<p>Click here to log in: <a href="${magicLink}">Access Portal</a></p>`
-  // });
+  await sendMagicLinkEmailService(email, tenantSlug, token);
 }

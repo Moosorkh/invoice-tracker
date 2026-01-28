@@ -1,6 +1,5 @@
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM_EMAIL = process.env.FROM_EMAIL || "noreply@yourdomain.com";
 const FRONTEND_URL = process.env.FRONTEND_URL || "https://invoice-tracker.up.railway.app";
 
@@ -11,10 +10,22 @@ interface EmailOptions {
 }
 
 /**
+ * Get or create Resend client (lazy initialization)
+ */
+function getResendClient(): Resend | null {
+  if (!process.env.RESEND_API_KEY) {
+    return null;
+  }
+  return new Resend(process.env.RESEND_API_KEY);
+}
+
+/**
  * Send email using Resend
  */
 async function sendEmail({ to, subject, html }: EmailOptions): Promise<void> {
-  if (!process.env.RESEND_API_KEY) {
+  const resend = getResendClient();
+  
+  if (!resend) {
     console.warn(`[EMAIL] No RESEND_API_KEY set. Would have sent to ${to}: ${subject}`);
     console.log(`[EMAIL PREVIEW]\n${html}\n`);
     return;

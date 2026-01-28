@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { Container, Typography, Box, Card, CardContent, Grid, Alert, CircularProgress } from "@mui/material";
-import { useParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { usePortalSlug } from "../hooks/usePortalSlug";
 
 const PortalDashboard = () => {
-  const { tenantSlug } = useParams<{ tenantSlug: string }>();
+  const tenantSlug = usePortalSlug();
   const { token } = useAuth();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);

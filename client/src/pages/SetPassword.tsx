@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Box,
   Button,
@@ -13,9 +13,10 @@ import {
 } from "@mui/material";
 import { Visibility, VisibilityOff, CheckCircle } from "@mui/icons-material";
 import axios from "axios";
+import { usePortalSlug, portalPath } from "../hooks/usePortalSlug";
 
 const SetPassword: React.FC = () => {
-  const { slug } = useParams<{ slug: string }>();
+  const slug = usePortalSlug();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const token = searchParams.get("token");
@@ -88,7 +89,9 @@ const SetPassword: React.FC = () => {
 
       // Redirect to login after 2 seconds
       setTimeout(() => {
-        navigate(`/portal/${slug}`);
+        if (slug) {
+          navigate(`/portal/${slug}`);
+        }
       }, 2000);
     } catch (err: any) {
       setError(err.response?.data?.error || "Failed to set password. The link may have expired.");

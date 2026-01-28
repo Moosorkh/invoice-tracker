@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { TextField, Button, Container, Typography, Box, Alert, CircularProgress, Tabs, Tab, IconButton, InputAdornment, Link } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
-import { useParams, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { usePortalSlug, portalPath } from "../hooks/usePortalSlug";
 
 const PortalLogin = () => {
-  const { tenantSlug } = useParams<{ tenantSlug: string }>();
+  const tenantSlug = usePortalSlug();
   const [tabValue, setTabValue] = useState(0);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -47,7 +48,9 @@ const PortalLogin = () => {
       login(data.token, { userId: data.user.id, email: data.user.email });
       
       // Redirect to portal dashboard
-      navigate(`/portal/${tenantSlug}/dashboard`);
+      if (tenantSlug) {
+        navigate(portalPath(tenantSlug, "dashboard"));
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to log in");
     } finally {

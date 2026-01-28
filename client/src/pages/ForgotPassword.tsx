@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams, Link as RouterLink } from "react-router-dom";
+import { Link as RouterLink } from "react-router-dom";
 import {
   Box,
   Button,
@@ -11,9 +11,10 @@ import {
 } from "@mui/material";
 import { CheckCircle, Email } from "@mui/icons-material";
 import axios from "axios";
+import { usePortalSlug } from "../hooks/usePortalSlug";
 
 const ForgotPassword: React.FC = () => {
-  const { slug } = useParams<{ slug: string }>();
+  const slug = usePortalSlug();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");

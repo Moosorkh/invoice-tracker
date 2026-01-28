@@ -1,16 +1,21 @@
 import React from "react";
 import { AppBar, Toolbar, Typography, Button, Box } from "@mui/material";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { usePortalSlug, portalPath } from "../hooks/usePortalSlug";
 
 const PortalNavbar = () => {
   const { isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
-  const { tenantSlug } = useParams<{ tenantSlug: string }>();
+  const tenantSlug = usePortalSlug();
 
   const handleLogout = () => {
     logout();
-    navigate(`/portal/${tenantSlug}`);
+    if (tenantSlug) {
+      navigate(`/portal/${tenantSlug}`);
+    } else {
+      navigate('/login');
+    }
   };
 
   return (
@@ -20,15 +25,15 @@ const PortalNavbar = () => {
           Borrower Portal
         </Typography>
         
-        {isAuthenticated ? (
+        {isAuthenticated && tenantSlug ? (
           <Box>
-            <Button color="inherit" component={Link} to={`/portal/${tenantSlug}/dashboard`}>
+            <Button color="inherit" component={Link} to={portalPath(tenantSlug, "dashboard")}>
               My Dashboard
             </Button>
-            <Button color="inherit" component={Link} to={`/portal/${tenantSlug}/loans`}>
+            <Button color="inherit" component={Link} to={portalPath(tenantSlug, "loans")}>
               My Loans
             </Button>
-            <Button color="inherit" component={Link} to={`/portal/${tenantSlug}/profile`}>
+            <Button color="inherit" component={Link} to={portalPath(tenantSlug, "profile")}>
               Profile
             </Button>
             <Button color="inherit" onClick={handleLogout}>

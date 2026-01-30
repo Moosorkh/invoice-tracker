@@ -6,7 +6,7 @@ nixPkgs = ["nodejs_20", "postgresql"]
 [phases.install]
 cmds = [
   "npm ci --prefix server --include=dev",
-  "npm ci --prefix client"
+  "npm ci --prefix client --include=dev"
 ]
 
 [phases.build]

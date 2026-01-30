@@ -25,15 +25,30 @@ const PortalNavbar = () => {
           Borrower Portal
         </Typography>
         
-        {isAuthenticated && tenantSlug ? (
+        {isAuthenticated ? (
           <Box>
-            <Button color="inherit" component={Link} to={portalPath(tenantSlug, "dashboard")}>
+            <Button 
+              color="inherit" 
+              component={Link} 
+              to={portalPath(tenantSlug, "dashboard")}
+              disabled={!tenantSlug}
+            >
               My Dashboard
             </Button>
-            <Button color="inherit" component={Link} to={portalPath(tenantSlug, "loans")}>
+            <Button 
+              color="inherit" 
+              component={Link} 
+              to={portalPath(tenantSlug, "loans")}
+              disabled={!tenantSlug}
+            >
               My Loans
             </Button>
-            <Button color="inherit" component={Link} to={portalPath(tenantSlug, "profile")}>
+            <Button 
+              color="inherit" 
+              component={Link} 
+              to={portalPath(tenantSlug, "profile")}
+              disabled={!tenantSlug}
+            >
               Profile
             </Button>
             <Button color="inherit" onClick={handleLogout}>

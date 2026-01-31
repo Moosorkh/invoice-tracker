@@ -132,7 +132,10 @@ router.put(
     }
 
     const client = await prisma.client.update({
-      where: { id },
+      where: { 
+        id,
+        tenantId 
+      },
       data: validatedData,
     });
 
@@ -162,7 +165,10 @@ router.delete(
 
     // With cascade delete, we can now safely delete clients with invoices
     await prisma.client.delete({
-      where: { id },
+      where: { 
+        id,
+        tenantId 
+      },
     });
 
     res.json({ message: "Client deleted successfully" });

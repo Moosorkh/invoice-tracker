@@ -319,7 +319,10 @@ router.delete(
 
     // With cascade delete, payments will be automatically deleted
     await prisma.invoice.delete({
-      where: { id },
+      where: { 
+        id,
+        tenantId 
+      },
     });
 
     res.json({ message: "Invoice deleted successfully" });

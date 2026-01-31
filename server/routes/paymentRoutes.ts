@@ -275,14 +275,16 @@ router.delete(
       return res.status(403).json({ error: "Not authorized" });
     }
 
-    await prisma.payment.delete({
-      where: { id },
-    });
+    // Delete payment and update invoice in a transaction
+    await prisma.$transaction(async (tx) => {
+      await tx.payment.delete({
+        where: { id },
+      });
 
-    // Update invoice status if needed
-    const remainingPayments = await prisma.payment.findMany({
-      where: { invoiceId: payment.invoiceId! },
-    });
+      // Update invoice status if needed
+      const remainingPayments = await tx.payment.findMany({
+        where: { invoiceId: payment.invoiceId! },
+      });
 
     const totalRemaining = remainingPayments.reduce(
       (sum, p) => sum.add(p.amount),

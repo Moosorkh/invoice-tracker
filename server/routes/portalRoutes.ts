@@ -210,7 +210,10 @@ router.put(
 
     // Update client info (not clientUser, since that's just the portal account)
     const updatedClient = await prisma.client.update({
-      where: { id: clientId },
+      where: { 
+        id: clientId,
+        tenantId 
+      },
       data: {
         phone,
         mailingAddress,

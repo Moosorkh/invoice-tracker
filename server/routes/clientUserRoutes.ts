@@ -126,7 +126,11 @@ router.delete("/client/:clientId/portal-user/:portalUserId", authMiddleware, asy
     }
 
     await prisma.clientUser.delete({
-      where: { id: portalUserId },
+      where: { 
+        id: portalUserId,
+        tenantId,
+        clientId 
+      },
     });
 
     res.json({ message: "Portal user deleted successfully" });

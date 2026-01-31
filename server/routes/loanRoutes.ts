@@ -285,7 +285,10 @@ router.put(
     if (validatedData.description !== undefined) updateData.description = validatedData.description;
 
     const loan = await prisma.loan.update({
-      where: { id },
+      where: { 
+        id,
+        tenantId 
+      },
       data: updateData,
       include: { client: true },
     });
@@ -313,7 +316,12 @@ router.delete(
       return res.status(404).json({ error: "Loan not found" });
     }
 
-    await prisma.loan.delete({ where: { id } });
+    await prisma.loan.delete({ 
+      where: { 
+        id,
+        tenantId 
+      } 
+    });
 
     res.json({ message: "Loan deleted successfully" });
   })

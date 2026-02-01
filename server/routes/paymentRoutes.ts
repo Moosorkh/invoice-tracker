@@ -286,20 +286,22 @@ router.delete(
         where: { invoiceId: payment.invoiceId! },
       });
 
-    const totalRemaining = remainingPayments.reduce(
-      (sum, p) => sum.add(p.amount),
-      new Prisma.Decimal(0)
-    );
+      const totalRemaining = remainingPayments.reduce(
+        (sum, p) => sum.add(p.amount),
+        new Prisma.Decimal(0)
+      );
 
-    if (
-      totalRemaining.lt(payment.invoice.amount) &&
-      payment.invoice.status === "paid"
-    ) {
-      await prisma.invoice.update({
-        where: { id: payment.invoiceId! },
-        data: { status: "pending" },
-      });
-    }
+      if (
+        payment.invoice &&
+        totalRemaining.lt(payment.invoice.amount) &&
+        payment.invoice.status === "paid"
+      ) {
+        await tx.invoice.update({
+          where: { id: payment.invoiceId! },
+          data: { status: "pending" },
+        });
+      }
+    });
 
     res.json({ message: "Payment deleted successfully" });
   })

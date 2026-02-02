@@ -4,6 +4,10 @@ export interface AuthRequest extends Request {
   user?: {
     userId: string;
     tenantId?: string;
+    email?: string;
+    role?: string;
+    userType?: 'client' | 'staff';
+    clientId?: string;
   };
 }
 

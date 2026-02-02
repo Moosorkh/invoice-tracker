@@ -1,5 +1,5 @@
 import { prisma } from "./prisma";
-import { Request } from "express";
+import { AuthRequest } from "../types/express";
 
 interface AuditLogData {
   tenantId: string;
@@ -47,7 +47,7 @@ export async function createAuditLog(data: AuditLogData): Promise<void> {
  * Log entity creation
  */
 export async function logCreate(
-  req: Request,
+  req: AuthRequest,
   entity: string,
   entityId: string,
   data: any
@@ -73,7 +73,7 @@ export async function logCreate(
  * Log entity update
  */
 export async function logUpdate(
-  req: Request,
+  req: AuthRequest,
   entity: string,
   entityId: string,
   before: any,
@@ -101,7 +101,7 @@ export async function logUpdate(
  * Log entity deletion
  */
 export async function logDelete(
-  req: Request,
+  req: AuthRequest,
   entity: string,
   entityId: string,
   data: any
@@ -130,7 +130,7 @@ export async function logLogin(
   email: string,
   tenantId: string,
   userId: string,
-  req: Request
+  req: AuthRequest
 ): Promise<void> {
   await createAuditLog({
     tenantId,
@@ -151,7 +151,7 @@ export async function logLogin(
 export async function logLoginFailed(
   email: string,
   tenantId: string | null,
-  req: Request,
+  req: AuthRequest,
   reason: string
 ): Promise<void> {
   if (!tenantId) return;
@@ -172,7 +172,7 @@ export async function logLoginFailed(
  * Log user logout
  */
 export async function logLogout(
-  req: Request
+  req: AuthRequest
 ): Promise<void> {
   const tenantId = req.user?.tenantId;
   if (!tenantId) return;
@@ -194,7 +194,7 @@ export async function logLogout(
  * Log sensitive action with custom metadata
  */
 export async function logAction(
-  req: Request,
+  req: AuthRequest,
   action: string,
   entity: string,
   description: string,

@@ -60,7 +60,7 @@ const registerHandler: RequestHandler = async (req, res, next) => {
         data: {
           userId: user.id,
           tenantId: tenant.id,
-          role: "owner",
+          role: "OWNER",
         },
       });
 

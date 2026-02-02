@@ -132,7 +132,7 @@ router.post(
           tenants: {
             some: {
               tenantId,
-              role: "owner",
+              role: "OWNER",
             },
           },
         },

@@ -22,6 +22,7 @@ import debugRoutes from "./routes/debugRoutes";
 import { tenantResolver } from "./middleware/tenantResolver";
 import { staffOnlyMiddleware } from "./middleware/clientPortalAuth";
 import { errorHandler } from "./middleware/errorHandler";
+import { prisma } from "./utils/prisma";
 
 dotenv.config();
 
@@ -186,6 +187,14 @@ const server = app.listen(PORT, "0.0.0.0", () => {
   console.log(`📝 Environment: ${process.env.NODE_ENV || "development"}`);
   console.log(`🔗 Database: ${process.env.DATABASE_URL ? "Connected" : "No DATABASE_URL found"}`);
   console.log(`✅ Health check available at http://0.0.0.0:${PORT}/health`);
+  
+  // Connect to database after server starts (non-blocking for healthcheck)
+  prisma.$connect()
+    .then(() => console.log('✅ Prisma connected to database'))
+    .catch((err) => {
+      console.error('❌ Prisma connection failed:', err);
+      console.error('⚠️  API requests will fail until database is available');
+    });
 });
 
 // Handle server errors
@@ -196,4 +205,14 @@ server.on('error', (error: NodeJS.ErrnoException) => {
     console.error('❌ Server error:', error);
   }
   process.exit(1);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  console.log('📦 SIGTERM received, closing server...');
+  await prisma.$disconnect();
+  server.close(() => {
+    console.log('✅ Server closed');
+    process.exit(0);
+  });
 });

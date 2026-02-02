@@ -1,19 +1,11 @@
 #!/bin/bash
 set -e
 
-echo "� Starting server (migrations will run in background)..."
+echo "🔧 Running database migrations (with timeout)..."
 
-# Start server immediately
-node dist/index.js &
-SERVER_PID=$!
+# Run migrations with timeout - don't block forever
+timeout 30s npx prisma migrate resolve --applied 20260119061951_enhance_portal_auth_tokens || echo "⏭️  Skipped migration resolve"
+timeout 30s npx prisma migrate deploy || echo "⚠️  Migrations timed out or failed - starting server anyway"
 
-# Run migrations in background
-(
-  sleep 2
-  echo "🔧 Running database migrations..."
-  npx prisma migrate resolve --applied 20260119061951_enhance_portal_auth_tokens || true
-  npx prisma migrate deploy && echo "✅ Migrations completed" || echo "⚠️  Migrations failed"
-) &
-
-# Wait for server process
-wait $SERVER_PID
+echo "🚀 Starting server..."
+exec node dist/index.js

@@ -16,6 +16,16 @@ interface AuditLogData {
   metadata?: any;
 }
 
+function shouldSkipAudit(req?: Pick<AuthRequest, "path" | "originalUrl">): boolean {
+  const path = req?.path ?? "";
+  const originalUrl = req?.originalUrl ?? "";
+
+  // Railway healthcheck must be fast and must not depend on DB.
+  if (path === "/health" || originalUrl.startsWith("/health")) return true;
+
+  return false;
+}
+
 /**
  * Create an audit log entry
  */
@@ -52,10 +62,12 @@ export async function logCreate(
   entityId: string,
   data: any
 ): Promise<void> {
+  if (shouldSkipAudit(req)) return;
+
   const tenantId = req.user?.tenantId;
   if (!tenantId) return;
 
-  await createAuditLog({
+  void createAuditLog({
     tenantId,
     action: "CREATE",
     entity,
@@ -79,10 +91,12 @@ export async function logUpdate(
   before: any,
   after: any
 ): Promise<void> {
+  if (shouldSkipAudit(req)) return;
+
   const tenantId = req.user?.tenantId;
   if (!tenantId) return;
 
-  await createAuditLog({
+  void createAuditLog({
     tenantId,
     action: "UPDATE",
     entity,
@@ -106,10 +120,12 @@ export async function logDelete(
   entityId: string,
   data: any
 ): Promise<void> {
+  if (shouldSkipAudit(req)) return;
+
   const tenantId = req.user?.tenantId;
   if (!tenantId) return;
 
-  await createAuditLog({
+  void createAuditLog({
     tenantId,
     action: "DELETE",
     entity,
@@ -132,7 +148,9 @@ export async function logLogin(
   userId: string,
   req: AuthRequest
 ): Promise<void> {
-  await createAuditLog({
+  if (shouldSkipAudit(req)) return;
+
+  void createAuditLog({
     tenantId,
     action: "LOGIN",
     entity: "User",
@@ -154,9 +172,10 @@ export async function logLoginFailed(
   req: AuthRequest,
   reason: string
 ): Promise<void> {
+  if (shouldSkipAudit(req)) return;
   if (!tenantId) return;
 
-  await createAuditLog({
+  void createAuditLog({
     tenantId,
     action: "LOGIN_FAILED",
     entity: "User",
@@ -171,13 +190,13 @@ export async function logLoginFailed(
 /**
  * Log user logout
  */
-export async function logLogout(
-  req: AuthRequest
-): Promise<void> {
+export async function logLogout(req: AuthRequest): Promise<void> {
+  if (shouldSkipAudit(req)) return;
+
   const tenantId = req.user?.tenantId;
   if (!tenantId) return;
 
-  await createAuditLog({
+  void createAuditLog({
     tenantId,
     action: "LOGOUT",
     entity: "User",
@@ -200,10 +219,12 @@ export async function logAction(
   description: string,
   metadata?: any
 ): Promise<void> {
+  if (shouldSkipAudit(req)) return;
+
   const tenantId = req.user?.tenantId;
   if (!tenantId) return;
 
-  await createAuditLog({
+  void createAuditLog({
     tenantId,
     action,
     entity,

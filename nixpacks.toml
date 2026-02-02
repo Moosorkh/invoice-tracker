@@ -19,7 +19,7 @@ cmds = [
 ]
 
 [start]
-cmd = "cd server && npm start"
+cmd = "cd server && chmod +x startup.sh && ./startup.sh"
 
 [env]
 NODE_ENV = "production"

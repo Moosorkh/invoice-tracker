@@ -54,8 +54,9 @@ const authLimiter = rateLimit({
 app.use(compression());
 
 // Health check endpoint - must be before all middleware
+// Returns 200 immediately so Railway can mark service as healthy
 app.get("/health", (req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
+  res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
 // CORS only needed in development
@@ -178,8 +179,21 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 const PORT = parseInt(process.env.PORT || "5000", 10);
-app.listen(PORT, "0.0.0.0", () => {
+
+// Start server immediately - don't wait for anything
+const server = app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📝 Environment: ${process.env.NODE_ENV || "development"}`);
   console.log(`🔗 Database: ${process.env.DATABASE_URL ? "Connected" : "No DATABASE_URL found"}`);
+  console.log(`✅ Health check available at http://0.0.0.0:${PORT}/health`);
+});
+
+// Handle server errors
+server.on('error', (error: NodeJS.ErrnoException) => {
+  if (error.code === 'EADDRINUSE') {
+    console.error(`❌ Port ${PORT} is already in use`);
+  } else {
+    console.error('❌ Server error:', error);
+  }
+  process.exit(1);
 });

@@ -11,10 +11,37 @@ CREATE TYPE "UserRole" AS ENUM ('OWNER', 'ADMIN', 'MANAGER', 'OPERATOR', 'VIEWER
 -- AlterTable
 ALTER TABLE "PortalAuthToken" ALTER COLUMN "type" DROP DEFAULT;
 
--- AlterTable
-ALTER TABLE "UserTenant" ADD COLUMN     "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-DROP COLUMN "role",
-ADD COLUMN     "role" "UserRole" NOT NULL DEFAULT 'VIEWER';
+-- AlterTable - Add updatedAt with default
+ALTER TABLE "UserTenant" ADD COLUMN "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
+-- Add temporary column for new enum role
+ALTER TABLE "UserTenant" ADD COLUMN "role_new" "UserRole";
+
+-- Migrate existing role data (convert lowercase to UPPERCASE enum values)
+UPDATE "UserTenant" SET "role_new" = 
+  CASE 
+    WHEN UPPER("role") = 'OWNER' THEN 'OWNER'::"UserRole"
+    WHEN UPPER("role") = 'ADMIN' THEN 'ADMIN'::"UserRole"
+    WHEN UPPER("role") = 'MANAGER' THEN 'MANAGER'::"UserRole"
+    WHEN UPPER("role") = 'OPERATOR' THEN 'OPERATOR'::"UserRole"
+    WHEN UPPER("role") = 'VIEWER' THEN 'VIEWER'::"UserRole"
+    ELSE 'VIEWER'::"UserRole"
+  END;
+
+-- Set default for rows that didn't have a role
+UPDATE "UserTenant" SET "role_new" = 'VIEWER'::"UserRole" WHERE "role_new" IS NULL;
+
+-- Make role_new NOT NULL
+ALTER TABLE "UserTenant" ALTER COLUMN "role_new" SET NOT NULL;
+
+-- Drop old role column
+ALTER TABLE "UserTenant" DROP COLUMN "role";
+
+-- Rename role_new to role
+ALTER TABLE "UserTenant" RENAME COLUMN "role_new" TO "role";
+
+-- Set default for future inserts
+ALTER TABLE "UserTenant" ALTER COLUMN "role" SET DEFAULT 'VIEWER'::"UserRole";
 
 -- CreateTable
 CREATE TABLE "AuditLog" (

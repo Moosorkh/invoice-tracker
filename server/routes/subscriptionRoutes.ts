@@ -2,6 +2,7 @@ import { Router, Response } from "express";
 import { AuthRequest } from "../types/express";
 import { prisma } from "../utils/prisma";
 import { authMiddleware } from "../middleware/authMiddleware";
+import { requireOwner } from "../middleware/rbacMiddleware";
 import {
   stripe,
   PLANS,
@@ -93,6 +94,7 @@ router.get(
  */
 router.post(
   "/checkout",
+  requireOwner,
   routeHandler(async (req: AuthRequest, res: Response) => {
     const tenantId = req.user!.tenantId;
     const { plan } = req.body;
@@ -180,6 +182,7 @@ router.post(
  */
 router.post(
   "/portal",
+  requireOwner,
   routeHandler(async (req: AuthRequest, res: Response) => {
     const tenantId = req.user!.tenantId;
 
@@ -213,6 +216,7 @@ router.post(
  */
 router.post(
   "/cancel",
+  requireOwner,
   routeHandler(async (req: AuthRequest, res: Response) => {
     const tenantId = req.user!.tenantId;
     const { immediately } = req.body;
@@ -257,6 +261,7 @@ router.post(
  */
 router.post(
   "/resume",
+  requireOwner,
   routeHandler(async (req: AuthRequest, res: Response) => {
     const tenantId = req.user!.tenantId;
 
@@ -295,6 +300,7 @@ router.post(
  */
 router.post(
   "/change-plan",
+  requireOwner,
   routeHandler(async (req: AuthRequest, res: Response) => {
     const tenantId = req.user!.tenantId;
     const { plan } = req.body;

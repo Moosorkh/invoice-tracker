@@ -1,6 +1,7 @@
 import express from "express";
 import { Prisma } from "@prisma/client";
 import { authMiddleware } from "../middleware/authMiddleware";
+import { requireManager } from "../middleware/rbacMiddleware";
 import { checkLoanLimit } from "../middleware/usageLimits";
 import { asyncHandler } from "../utils/routeHandler";
 import { prisma } from "../utils/prisma";
@@ -74,6 +75,7 @@ function calculateAmortizationSchedule(
 // Create Loan
 router.post(
   "/",
+  requireManager,
   checkLoanLimit,
   asyncHandler(async (req, res) => {
     const validatedData = createLoanSchema.parse(req.body);
@@ -261,6 +263,7 @@ router.get(
 // Update Loan
 router.put(
   "/:id",
+  requireManager,
   asyncHandler(async (req, res) => {
     const { id } = req.params;
     const validatedData = updateLoanSchema.parse(req.body);
@@ -300,6 +303,7 @@ router.put(
 // Delete Loan
 router.delete(
   "/:id",
+  requireManager,
   asyncHandler(async (req, res) => {
     const { id } = req.params;
     const tenantId = req.user!.tenantId;

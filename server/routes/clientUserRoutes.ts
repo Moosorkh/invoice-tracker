@@ -1,12 +1,13 @@
 import { Router, Request, Response } from "express";
 import { prisma } from "../utils/prisma";
 import { authMiddleware } from "../middleware/authMiddleware";
+import { requireAdmin } from "../middleware/rbacMiddleware";
 import { generatePortalAuthToken } from "../utils/portalAuth";
 
 const router = Router();
 
 // Get portal users for a client
-router.get("/client/:clientId/portal-users", authMiddleware, async (req, res) => {
+router.get("/client/:clientId/portal-users", authMiddleware, requireAdmin, async (req, res) => {
   try {
     const { clientId } = req.params;
     const tenantId = req.user?.tenantId;
@@ -39,7 +40,7 @@ router.get("/client/:clientId/portal-users", authMiddleware, async (req, res) =>
 });
 
 // Create portal user for a client
-router.post("/client/:clientId/portal-user", authMiddleware, async (req, res) => {
+router.post("/client/:clientId/portal-user", authMiddleware, requireAdmin, async (req, res) => {
   try {
     const { clientId } = req.params;
     const { email } = req.body;

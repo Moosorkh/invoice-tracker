@@ -1,6 +1,7 @@
 import express from "express";
 import { Prisma } from "@prisma/client";
 import { authMiddleware } from "../middleware/authMiddleware";
+import { requireOperator, requireManager } from "../middleware/rbacMiddleware";
 import { asyncHandler } from "../utils/routeHandler";
 import { prisma } from "../utils/prisma";
 import {
@@ -15,6 +16,7 @@ router.use(authMiddleware);
 // Create Invoice Item
 router.post(
   "/",
+  requireOperator,
   asyncHandler(async (req, res) => {
     const validatedData = createInvoiceItemSchema.parse(req.body);
     const tenantId = req.user!.tenantId;
@@ -98,6 +100,7 @@ router.get(
 // Update Invoice Item
 router.put(
   "/:id",
+  requireOperator,
   asyncHandler(async (req, res) => {
     const { id } = req.params;
     const validatedData = updateInvoiceItemSchema.parse(req.body);
@@ -152,6 +155,7 @@ router.put(
 // Delete Invoice Item
 router.delete(
   "/:id",
+  requireOperator,
   asyncHandler(async (req, res) => {
     const { id } = req.params;
     const tenantId = req.user!.tenantId;

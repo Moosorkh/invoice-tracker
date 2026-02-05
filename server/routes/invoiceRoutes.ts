@@ -1,5 +1,6 @@
 import express from "express";
 import { authMiddleware } from "../middleware/authMiddleware";
+import { requireOperator, requireManager } from "../middleware/rbacMiddleware";
 import { checkInvoiceLimit } from "../middleware/usageLimits";
 import { asyncHandler } from "../utils/routeHandler";
 import { prisma } from "../utils/prisma";
@@ -36,6 +37,7 @@ async function generateInvoiceNumber(tenantId: string): Promise<string> {
 // Create Invoice
 router.post(
   "/",
+  requireOperator,
   checkInvoiceLimit,
   asyncHandler(async (req, res) => {
     const validatedData = createInvoiceSchema.parse(req.body);
@@ -202,6 +204,7 @@ router.get(
 // Update Invoice
 router.put(
   "/:id",
+  requireOperator,
   asyncHandler(async (req, res) => {
     const { id } = req.params;
     const validatedData = updateInvoiceSchema.parse(req.body);
@@ -297,6 +300,7 @@ router.put(
 // Delete Invoice
 router.delete(
   "/:id",
+  requireManager,
   asyncHandler(async (req, res) => {
     const { id } = req.params;
     const tenantId = req.user!.tenantId;

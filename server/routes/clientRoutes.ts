@@ -1,5 +1,6 @@
 import express from "express";
 import { authMiddleware } from "../middleware/authMiddleware";
+import { requireManager, requireAdmin } from "../middleware/rbacMiddleware";
 import { checkClientLimit } from "../middleware/usageLimits";
 import { asyncHandler } from "../utils/routeHandler";
 import { prisma } from "../utils/prisma";
@@ -17,6 +18,7 @@ router.use(authMiddleware);
 // Create Client
 router.post(
   "/",
+  requireManager,
   checkClientLimit,
   asyncHandler(async (req, res) => {
     const validatedData = createClientSchema.parse(req.body);
@@ -113,6 +115,7 @@ router.get(
 // Update Client
 router.put(
   "/:id",
+  requireManager,
   asyncHandler(async (req, res) => {
     const { id } = req.params;
     const validatedData = updateClientSchema.parse(req.body);
@@ -146,6 +149,7 @@ router.put(
 // Delete Client
 router.delete(
   "/:id",
+  requireManager,
   asyncHandler(async (req, res) => {
     const { id } = req.params;
     const tenantId = req.user!.tenantId;
@@ -178,6 +182,7 @@ router.delete(
 // Add client address
 router.post(
   "/:id/addresses",
+  requireManager,
   asyncHandler(async (req, res) => {
     const { id } = req.params;
     const tenantId = req.user!.tenantId;
@@ -204,6 +209,7 @@ router.post(
 // Add client contact
 router.post(
   "/:id/contacts",
+  requireManager,
   asyncHandler(async (req, res) => {
     const { id } = req.params;
     const tenantId = req.user!.tenantId;
@@ -230,6 +236,7 @@ router.post(
 // Create portal user for client (borrower login)
 router.post(
   "/:id/portal-user/invite",
+  requireAdmin,
   asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { email, name } = req.body;

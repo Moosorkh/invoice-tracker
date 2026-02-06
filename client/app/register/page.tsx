@@ -15,7 +15,7 @@ export default function Register() {
   });
   const [error, setError] = useState("");
   const router = useRouter();
-  const { login, token } = useAuth();
+  const { setSession, token } = useAuth();
 
   useEffect(() => {
     if (token) {
@@ -63,11 +63,10 @@ export default function Register() {
         throw new Error(loginData.error || "Login failed");
       }
 
-      login(loginData.token, { 
-        userId: loginData.userId, 
+      setSession(loginData.token, {
+        id: loginData.userId,
         email: loginData.email,
         tenantSlug: loginData.tenantSlug,
-        tenantName: loginData.tenantName
       });
       
       router.replace(`/t/${loginData.tenantSlug}/`);

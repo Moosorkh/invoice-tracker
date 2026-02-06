@@ -43,6 +43,7 @@ export default function VerifyMagicLink() {
         }
 
         setStatus('success');
+          import { useAuth } from '@/context/AuthContext';
 
         // Redirect to portal dashboard after 1.5 seconds
         setTimeout(() => {
@@ -50,12 +51,13 @@ export default function VerifyMagicLink() {
         }, 1500);
       } catch (err) {
         setStatus('error');
+            const { setSession } = useAuth();
         setError(err instanceof Error ? err.message : 'Failed to verify token');
       }
     };
 
     verifyToken();
-  }, [token, slug, router]);
+  }, [token, slug, router, setSession]);
 
   return (
     <Container maxWidth="sm">
@@ -75,10 +77,7 @@ export default function VerifyMagicLink() {
             </Typography>
           </Box>
         )}
-
-        {status === 'success' && (
-          <Box textAlign="center">
-            <CheckCircle sx={{ fontSize: 64, color: 'success.main', mb: 2 }} />
+                  setSession(data.token, { id: '', email: '', tenantSlug: slug });
             <Typography variant="h5" gutterBottom>
               Login Successful!
             </Typography>

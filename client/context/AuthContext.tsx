@@ -4,14 +4,17 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { useRouter } from 'next/navigation';
 
 interface User {
-  id: number;
+  id: string;
   email: string;
   tenantSlug?: string;
 }
 
 interface AuthContextType {
   user: User | null;
+  token: string | null;
+  tenantSlug: string | null;
   login: (email: string, password: string) => Promise<void>;
+  setSession: (token: string, user: User) => void;
   logout: () => void;
   isLoading: boolean;
 }
@@ -20,6 +23,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
@@ -28,10 +32,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const storedUser = localStorage.getItem('user');
     
     if (token && storedUser) {
+      setToken(token);
       setUser(JSON.parse(storedUser));
     }
     setIsLoading(false);
   }, []);
+
+  const setSession = (token: string, user: User) => {
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(user));
+    if (user.tenantSlug) {
+      localStorage.setItem('tenantSlug', user.tenantSlug);
+    }
+    setToken(token);
+    setUser(user);
+  };
 
   const login = async (email: string, password: string) => {
     const response = await fetch('/api/auth/login', {
@@ -45,10 +60,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     const data = await response.json();
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('user', JSON.stringify(data.user));
-    localStorage.setItem('tenantSlug', data.user.tenantSlug);
-    setUser(data.user);
+
+    const user: User = {
+      id: data.userId,
+      email: data.email,
+      tenantSlug: data.tenantSlug,
+    };
+
+    setSession(data.token, user);
   };
 
   const logout = () => {
@@ -56,11 +75,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.removeItem('user');
     localStorage.removeItem('tenantSlug');
     setUser(null);
+    setToken(null);
     router.push('/login');
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isLoading }}>
+    <AuthContext.Provider
+      value={{ user, token, tenantSlug: user?.tenantSlug ?? null, login, setSession, logout, isLoading }}
+    >
       {children}
     </AuthContext.Provider>
   );

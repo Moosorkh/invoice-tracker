@@ -19,7 +19,7 @@ export default function PortalLogin() {
   const [loading, setLoading] = useState(false);
   const [token, setToken] = useState("");
   const [showTokenInput, setShowTokenInput] = useState(false);
-  const { login } = useAuth();
+  const { setSession } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -46,8 +46,7 @@ export default function PortalLogin() {
         throw new Error(data.error || "Invalid credentials");
       }
 
-      login(data.token, { userId: data.user.id, email: data.user.email });
-      
+      setSession(data.token, { id: data.user.id, email: data.user.email, tenantSlug });
       router.push(`/portal/${tenantSlug}/dashboard`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to log in");
@@ -102,7 +101,7 @@ export default function PortalLogin() {
         throw new Error(data.error || "Invalid or expired token");
       }
 
-      login(data.token, { userId: "", email });
+      setSession(data.token, { id: '', email, tenantSlug });
       
       router.push(`/portal/${tenantSlug}/dashboard`);
     } catch (err) {
@@ -130,7 +129,7 @@ export default function PortalLogin() {
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
         {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
 
-        {tabValue === 0 && (
+            setSession(data.token, { id: '', email, tenantSlug });
           <form onSubmit={handlePasswordLogin}>
             <TextField
               label="Email Address"

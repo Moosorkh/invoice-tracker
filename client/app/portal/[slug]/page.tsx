@@ -129,7 +129,7 @@ export default function PortalLogin() {
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
         {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
 
-            setSession(data.token, { id: '', email, tenantSlug });
+        {tabValue === 0 && (
           <form onSubmit={handlePasswordLogin}>
             <TextField
               label="Email Address"

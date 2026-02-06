@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { Box, CircularProgress, Alert, Container, Typography } from '@mui/material';
 import { CheckCircle } from '@mui/icons-material';
+import { useAuth } from '@/context/AuthContext';
 
 export default function VerifyMagicLink() {
   const params = useParams();
@@ -11,6 +12,7 @@ export default function VerifyMagicLink() {
   const router = useRouter();
   const slug = params.slug as string;
   const token = searchParams.get('token');
+  const { setSession } = useAuth();
 
   const [status, setStatus] = useState<'verifying' | 'success' | 'error'>('verifying');
   const [error, setError] = useState('');
@@ -36,14 +38,8 @@ export default function VerifyMagicLink() {
           throw new Error(data.error || 'Verification failed');
         }
 
-        // Store JWT token
-        if (data.token) {
-          localStorage.setItem('token', data.token);
-          localStorage.setItem('tenantSlug', slug);
-        }
-
+        setSession(data.token, { id: '', email: '', tenantSlug: slug });
         setStatus('success');
-          import { useAuth } from '@/context/AuthContext';
 
         // Redirect to portal dashboard after 1.5 seconds
         setTimeout(() => {
@@ -51,13 +47,12 @@ export default function VerifyMagicLink() {
         }, 1500);
       } catch (err) {
         setStatus('error');
-            const { setSession } = useAuth();
         setError(err instanceof Error ? err.message : 'Failed to verify token');
       }
     };
 
     verifyToken();
-  }, [token, slug, router, setSession]);
+  }, [token, slug, router]);
 
   return (
     <Container maxWidth="sm">
@@ -84,7 +79,10 @@ export default function VerifyMagicLink() {
             <Typography color="text.secondary">
               Redirecting to your dashboard...
             </Typography>
-          </Box>
+
+        {status === 'success' && (
+          <Box textAlign="center">
+            <CheckCircle sx={{ fontSize: 64, color: 'success.main', mb: 2 }} />
         )}
 
         {status === 'error' && (

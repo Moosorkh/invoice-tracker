@@ -10,14 +10,18 @@ export default function VerifyMagicLink() {
   const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
+
   const slug = params.slug as string;
   const token = searchParams.get('token');
+
   const { setSession } = useAuth();
 
   const [status, setStatus] = useState<'verifying' | 'success' | 'error'>('verifying');
   const [error, setError] = useState('');
 
   useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+
     const verifyToken = async () => {
       if (!token || !slug) {
         setStatus('error');
@@ -34,17 +38,14 @@ export default function VerifyMagicLink() {
 
         const data = await res.json();
 
-        if (!res.ok) {
-          throw new Error(data.error || 'Verification failed');
-        }
+        if (!res.ok) throw new Error(data?.error || 'Verification failed');
 
         setSession(data.token, { id: '', email: '', tenantSlug: slug });
         setStatus('success');
 
-        // Redirect to portal dashboard after 1.5 seconds
-        setTimeout(() => {
+        timeout = setTimeout(() => {
           router.push(`/portal/${slug}/dashboard`);
-        }, 1500);
+        }, 800);
       } catch (err) {
         setStatus('error');
         setError(err instanceof Error ? err.message : 'Failed to verify token');
@@ -52,7 +53,11 @@ export default function VerifyMagicLink() {
     };
 
     verifyToken();
-  }, [token, slug, router]);
+
+    return () => {
+      if (timeout) clearTimeout(timeout);
+    };
+  }, [token, slug, router, setSession]);
 
   return (
     <Container maxWidth="sm">
@@ -72,17 +77,15 @@ export default function VerifyMagicLink() {
             </Typography>
           </Box>
         )}
-                  setSession(data.token, { id: '', email: '', tenantSlug: slug });
-            <Typography variant="h5" gutterBottom>
-              Login Successful!
-            </Typography>
-            <Typography color="text.secondary">
-              Redirecting to your dashboard...
-            </Typography>
 
         {status === 'success' && (
           <Box textAlign="center">
             <CheckCircle sx={{ fontSize: 64, color: 'success.main', mb: 2 }} />
+            <Typography variant="h5" gutterBottom>
+              Login Successful!
+            </Typography>
+            <Typography color="text.secondary">Redirecting to your dashboard...</Typography>
+          </Box>
         )}
 
         {status === 'error' && (

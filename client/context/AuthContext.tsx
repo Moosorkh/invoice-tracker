@@ -13,6 +13,7 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   tenantSlug: string | null;
+  isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
   setSession: (token: string, user: User) => void;
   logout: () => void;
@@ -81,7 +82,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <AuthContext.Provider
-      value={{ user, token, tenantSlug: user?.tenantSlug ?? null, login, setSession, logout, isLoading }}
+      value={{ user, token, tenantSlug: user?.tenantSlug ?? null, isAuthenticated: !!user, login, setSession, logout, isLoading }}
     >
       {children}
     </AuthContext.Provider>

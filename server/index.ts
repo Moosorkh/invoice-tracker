@@ -60,6 +60,11 @@ app.get("/health", (req, res) => {
   res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
+// Also add /api/health for Railway healthcheck
+app.get("/api/health", (req, res) => {
+  res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
 // CORS only needed in development
 if (process.env.NODE_ENV !== "production") {
   app.use(cors({

@@ -131,20 +131,33 @@ app.use("/api/subscriptions", subscriptionRoutes);
 if (process.env.NODE_ENV === "production") {
   // Try multiple possible paths for the client build
   const possiblePaths = [
+    path.join(__dirname, "../client/.next/standalone"),
+    path.join(__dirname, "../../client/.next/standalone"),
     path.join(__dirname, "../client/dist"),
     path.join(__dirname, "../../client/dist"),
-    path.join(__dirname, "../dist/client")
+    path.join(__dirname, "../dist/client"),
+    "/app/client/.next/standalone",
+    "/app/client/dist"
   ];
   
   let clientPath = possiblePaths[0];
   const fs = require("fs");
   
+  console.log('🔍 Searching for client build...');
+  console.log('__dirname:', __dirname);
+  
   for (const testPath of possiblePaths) {
+    console.log(`Checking: ${testPath}`);
     if (fs.existsSync(testPath)) {
       clientPath = testPath;
       console.log(`✅ Found client dist at: ${clientPath}`);
       break;
     }
+  }
+  
+  if (!fs.existsSync(clientPath)) {
+    console.warn('⚠️  No client build found, static files will not be served');
+    console.warn('Checked paths:', possiblePaths);
   }
   
   // Set correct MIME types for Vite-generated files
@@ -163,6 +176,7 @@ if (process.env.NODE_ENV === "production") {
   // Serve index.html for all non-API routes
   app.get("*", (req, res) => {
     const indexPath = path.join(clientPath, "index.html");
+    console.log(`Looking for index.html at: ${indexPath}`);
     if (fs.existsSync(indexPath)) {
       res.sendFile(indexPath);
     } else {

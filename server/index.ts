@@ -127,62 +127,34 @@ app.use("/api/invoice-items", invoiceItemRoutes);
 app.use("/api/loans", loanRoutes);
 app.use("/api/subscriptions", subscriptionRoutes);
 
-// Serve static files from client build in production
+// Serve static files from client build in production (no Next.js)
 if (process.env.NODE_ENV === "production") {
-  // Try multiple possible paths for the client build
-  const possiblePaths = [
-    path.join(__dirname, "../client/.next/standalone"),
-    path.join(__dirname, "../../client/.next/standalone"),
-    path.join(__dirname, "../client/dist"),
-    path.join(__dirname, "../../client/dist"),
-    path.join(__dirname, "../dist/client"),
-    "/app/client/.next/standalone",
-    "/app/client/dist"
-  ];
-  
-  let clientPath = possiblePaths[0];
   const fs = require("fs");
-  
-  console.log('🔍 Searching for client build...');
-  console.log('__dirname:', __dirname);
-  
-  for (const testPath of possiblePaths) {
-    console.log(`Checking: ${testPath}`);
-    if (fs.existsSync(testPath)) {
-      clientPath = testPath;
-      console.log(`✅ Found client dist at: ${clientPath}`);
-      break;
-    }
+
+  // If you have a SPA build (e.g., Vite), it typically outputs to client/dist
+  const clientDistPath = path.join(__dirname, "../../client/dist");
+  const indexHtmlPath = path.join(clientDistPath, "index.html");
+
+  console.log("🔍 Looking for client build at:", clientDistPath);
+
+  if (fs.existsSync(indexHtmlPath)) {
+    console.log("✅ Found client SPA build");
+
+    // Static assets
+    app.use(express.static(clientDistPath, { etag: true, maxAge: "1h" }));
+
+    // SPA fallback for all non-API routes (supports /t/:slug/... client routing)
+    app.get(/^\/(?!api\/).*/, (req, res) => {
+      res.sendFile(indexHtmlPath);
+    });
+  } else {
+    console.warn("⚠️  Client build not found; running API-only");
+
+    // API-only: return 404 for non-API routes
+    app.get(/^\/(?!api\/).*/, (req, res) => {
+      res.status(404).send("Not found");
+    });
   }
-  
-  if (!fs.existsSync(clientPath)) {
-    console.warn('⚠️  No client build found, static files will not be served');
-    console.warn('Checked paths:', possiblePaths);
-  }
-  
-  // Set correct MIME types for Vite-generated files
-  app.use(express.static(clientPath, {
-    setHeaders: (res, filePath) => {
-      if (filePath.endsWith('.js') || filePath.endsWith('.jsx')) {
-        res.setHeader('Content-Type', 'application/javascript; charset=UTF-8');
-      } else if (filePath.endsWith('.mjs')) {
-        res.setHeader('Content-Type', 'application/javascript; charset=UTF-8');
-      } else if (filePath.endsWith('.css')) {
-        res.setHeader('Content-Type', 'text/css; charset=UTF-8');
-      }
-    }
-  }));
-  
-  // Serve index.html for all non-API routes
-  app.get("*", (req, res) => {
-    const indexPath = path.join(clientPath, "index.html");
-    console.log(`Looking for index.html at: ${indexPath}`);
-    if (fs.existsSync(indexPath)) {
-      res.sendFile(indexPath);
-    } else {
-      res.status(404).send("Application not found. Please check deployment configuration.");
-    }
-  });
 }
 
 app.use(errorHandler);

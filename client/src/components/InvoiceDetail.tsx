@@ -331,7 +331,7 @@ const InvoiceDetail = () => {
           <Typography>Invoice not found</Typography>
           <Button
             startIcon={<ArrowBack />}
-            onClick={() => router.push("/invoices")}
+            onClick={() => navigate("/invoices")}
             sx={{ mt: 2 }}
           >
             Back to Invoices
@@ -345,7 +345,7 @@ const InvoiceDetail = () => {
     <Container sx={{ mt: 4, mb: 4 }}>
       <Button
         startIcon={<ArrowBack />}
-        onClick={() => router.push("/invoices")}
+        onClick={() => navigate("/invoices")}
         sx={{ mb: 2 }}
       >
         Back to Invoices

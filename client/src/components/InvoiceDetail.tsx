@@ -314,7 +314,7 @@ const InvoiceDetail = () => {
           <Typography color="error">{error}</Typography>
           <Button
             startIcon={<ArrowBack />}
-            onClick={() => router.push("/invoices")}
+            onClick={() => navigate("/invoices")}
             sx={{ mt: 2 }}
           >
             Back to Invoices

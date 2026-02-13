@@ -13,7 +13,8 @@
 # testing
 /coverage
 
-# next.js
+# vite
+/dist
 /.next/
 /out/
 
@@ -39,3 +40,5 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+# Vite build
+dist/

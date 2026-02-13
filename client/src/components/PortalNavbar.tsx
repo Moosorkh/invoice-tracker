@@ -1,35 +1,27 @@
-'use client';
-
-import React from "react";
 import { AppBar, Toolbar, Typography, Button, Box } from "@mui/material";
-import Link from "next/link";
-import { useRouter, useParams } from "next/navigation";
-import { useAuth } from "@/context/AuthContext";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 const PortalNavbar = () => {
   const { isAuthenticated, logout } = useAuth();
-  const router = useRouter();
-  const params = useParams();
-  const tenantSlug = params?.slug as string | undefined;
+  const navigate = useNavigate();
+  const { slug } = useParams<{ slug: string }>();
+  const tenantSlug = slug;
 
   const handleLogout = () => {
     logout();
     if (tenantSlug) {
-      router.push(`/portal/${tenantSlug}`);
+      navigate(`/portal/${tenantSlug}`);
     } else {
-      router.push('/login');
+      navigate('/login');
     }
-  };
-
-  const portalPath = (path: string) => {
-    return tenantSlug ? `/portal/${tenantSlug}/${path}` : '#';
   };
 
   return (
     <AppBar position="static" sx={{ mb: 4 }}>
       <Toolbar>
         <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-          Borrower Portal
+          Client Portal
         </Typography>
         
         {isAuthenticated ? (
@@ -37,7 +29,7 @@ const PortalNavbar = () => {
             <Button 
               color="inherit" 
               component={Link} 
-              href={portalPath("dashboard")}
+              to={`/portal/${tenantSlug}/dashboard`}
               disabled={!tenantSlug}
             >
               My Dashboard
@@ -45,7 +37,7 @@ const PortalNavbar = () => {
             <Button 
               color="inherit" 
               component={Link} 
-              href={portalPath("loans")}
+              to={`/portal/${tenantSlug}/loans`}
               disabled={!tenantSlug}
             >
               My Loans
@@ -53,7 +45,7 @@ const PortalNavbar = () => {
             <Button 
               color="inherit" 
               component={Link} 
-              href={portalPath("profile")}
+              to={`/portal/${tenantSlug}/profile`}
               disabled={!tenantSlug}
             >
               Profile

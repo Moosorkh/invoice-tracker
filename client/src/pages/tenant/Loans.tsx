@@ -81,7 +81,10 @@ const Loans: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const { token } = useAuth();
+  const { token, tenantSlug: authTenantSlug } = useAuth();
+  const tenantSlug =
+    authTenantSlug ??
+    (typeof window !== "undefined" ? localStorage.getItem("tenantSlug") : null);
 
   useEffect(() => {
     if (token) {
@@ -347,7 +350,13 @@ const Loans: React.FC = () => {
                   <TableCell>
                     <Tooltip title="View Details">
                       <IconButton
-                        onClick={() => navigate(`/loans/${loan.id}`)}
+                        onClick={() =>
+                          navigate(
+                            tenantSlug
+                              ? `/t/${tenantSlug}/loans/${loan.id}`
+                              : `/loans/${loan.id}`
+                          )
+                        }
                       >
                         <Visibility />
                       </IconButton>

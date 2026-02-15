@@ -73,7 +73,10 @@ const InvoiceDetail = () => {
   const params = useParams();
   const id = params?.id as string;
   const navigate = useNavigate();
-  const { token } = useAuth();
+  const { token, tenantSlug: authTenantSlug } = useAuth();
+  const tenantSlug =
+    authTenantSlug ??
+    (typeof window !== "undefined" ? localStorage.getItem("tenantSlug") : null);
 
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
@@ -314,7 +317,7 @@ const InvoiceDetail = () => {
           <Typography color="error">{error}</Typography>
           <Button
             startIcon={<ArrowBack />}
-            onClick={() => navigate("/invoices")}
+            onClick={() => navigate(tenantSlug ? `/t/${tenantSlug}/invoices` : "/")}
             sx={{ mt: 2 }}
           >
             Back to Invoices
@@ -331,7 +334,7 @@ const InvoiceDetail = () => {
           <Typography>Invoice not found</Typography>
           <Button
             startIcon={<ArrowBack />}
-            onClick={() => navigate("/invoices")}
+            onClick={() => navigate(tenantSlug ? `/t/${tenantSlug}/invoices` : "/")}
             sx={{ mt: 2 }}
           >
             Back to Invoices
@@ -345,7 +348,7 @@ const InvoiceDetail = () => {
     <Container sx={{ mt: 4, mb: 4 }}>
       <Button
         startIcon={<ArrowBack />}
-        onClick={() => navigate("/invoices")}
+        onClick={() => navigate(tenantSlug ? `/t/${tenantSlug}/invoices` : "/")}
         sx={{ mb: 2 }}
       >
         Back to Invoices

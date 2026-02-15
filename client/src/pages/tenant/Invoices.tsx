@@ -68,7 +68,10 @@ const Invoices = () => {
   const navigate = useNavigate();
 
   // Get token from auth context
-  const { token } = useAuth();
+  const { token, tenantSlug: authTenantSlug } = useAuth();
+  const tenantSlug =
+    authTenantSlug ??
+    (typeof window !== "undefined" ? localStorage.getItem("tenantSlug") : null);
 
   useEffect(() => {
     if (token) {
@@ -364,7 +367,13 @@ const Invoices = () => {
                   <TableRow
                     key={invoice.id}
                     hover
-                    onClick={() => navigate(`/invoices/${invoice.id}`)}
+                    onClick={() =>
+                      navigate(
+                        tenantSlug
+                          ? `/t/${tenantSlug}/invoices/${invoice.id}`
+                          : `/invoices/${invoice.id}`
+                      )
+                    }
                     sx={{ cursor: "pointer" }}
                   >
                     <TableCell>

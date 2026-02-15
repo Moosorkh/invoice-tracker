@@ -66,7 +66,10 @@ const LoanDetail: React.FC = () => {
   const params = useParams();
   const id = params?.id as string;
   const navigate = useNavigate();
-  const { token } = useAuth();
+  const { token, tenantSlug: authTenantSlug } = useAuth();
+  const tenantSlug =
+    authTenantSlug ??
+    (typeof window !== "undefined" ? localStorage.getItem("tenantSlug") : null);
   const [loan, setLoan] = useState<Loan | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -165,7 +168,7 @@ const LoanDetail: React.FC = () => {
     return (
       <Container>
         <Typography color="error">{error || "Loan not found"}</Typography>
-        <Button onClick={() => navigate("/loans")}>Back to Loans</Button>
+        <Button onClick={() => navigate(tenantSlug ? `/t/${tenantSlug}/loans` : "/")}>Back to Loans</Button>
       </Container>
     );
   }
@@ -182,7 +185,7 @@ const LoanDetail: React.FC = () => {
           <Button onClick={() => setPaymentDialogOpen(true)} variant="contained" sx={{ mr: 1 }}>
             Record Payment
           </Button>
-          <Button onClick={() => navigate("/loans")}>Back</Button>
+          <Button onClick={() => navigate(tenantSlug ? `/t/${tenantSlug}/loans` : "/")}>Back</Button>
         </Box>
       </Box>
 

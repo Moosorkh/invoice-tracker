@@ -26,9 +26,9 @@ import {
   DialogContentText,
 } from "@mui/material";
 import { Edit, Delete } from "@mui/icons-material";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { getApiUrl } from "../config/api";
+import { getApiUrl } from "@/lib/api";
 
 interface Client {
   id: string;

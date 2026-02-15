@@ -25,8 +25,14 @@ import {
   InputAdornment,
 } from "@mui/material";
 import { Edit, Delete, LockReset, Visibility, VisibilityOff } from "@mui/icons-material";
-import { useAuth } from "../context/AuthContext";
-import { getApiUrl } from "../config/api";
+import { useAuth } from "@/context/AuthContext";
+import { getApiUrl } from "@/lib/api";
+
+interface PortalUser {
+  id: string;
+  email: string;
+  status?: string;
+}
 
 interface Client {
   id: string;
@@ -38,14 +44,14 @@ interface Client {
   city?: string;
   state?: string;
   status?: string;
-  portalUsers?: { id: string; email: string }[];
+  portalUsers?: PortalUser[];
 }
 
 interface PortalUserDialogState {
   open: boolean;
   clientId: string | null;
   clientName: string;
-  portalUsers: { id: string; email: string }[];
+  portalUsers: PortalUser[];
 }
 
 const Clients = () => {

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { Container, Typography, Grid, Paper, Box } from "@mui/material";
-import { useAuth } from "../context/AuthContext";
-import { getApiUrl } from "../config/api";
+import { Container, Typography, Grid, Paper } from "@mui/material";
+import { useAuth } from "@/context/AuthContext";
+import { getApiUrl } from "@/lib/api";
 import {
   PieChart,
   Pie,
@@ -279,9 +279,11 @@ const Dashboard: React.FC = () => {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, percent }: { name: string; percent: number }) =>
-                    `${name}: ${(percent * 100).toFixed(0)}%`
-                  }
+                  label={(props: any) => {
+                    const name = props?.name ?? "";
+                    const percent = typeof props?.percent === "number" ? props.percent : 0;
+                    return name ? `${name}: ${(percent * 100).toFixed(0)}%` : `${(percent * 100).toFixed(0)}%`;
+                  }}
                   outerRadius={100}
                   fill="#8884d8"
                   dataKey="value"
@@ -311,9 +313,11 @@ const Dashboard: React.FC = () => {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, percent }: { name: string; percent: number }) =>
-                    `${name}: ${(percent * 100).toFixed(0)}%`
-                  }
+                  label={(props: any) => {
+                    const name = props?.name ?? "";
+                    const percent = typeof props?.percent === "number" ? props.percent : 0;
+                    return name ? `${name}: ${(percent * 100).toFixed(0)}%` : `${(percent * 100).toFixed(0)}%`;
+                  }}
                   outerRadius={100}
                   fill="#8884d8"
                   dataKey="value"

@@ -38,6 +38,9 @@ interface Loan {
   maturityDate: string;
   nextDueDate: string | null;
   totalPaid: string;
+  currentPrincipal: string;
+  currentInterest: string;
+  currentFees: string;
   description: string | null;
   client: {
     name: string;
@@ -173,9 +176,12 @@ const LoanDetail: React.FC = () => {
     );
   }
 
-  const principal = parseFloat(loan.principal);
+  const originalPrincipal = parseFloat(loan.principal);
   const totalPaid = parseFloat(loan.totalPaid);
-  const remainingBalance = principal - totalPaid;
+  const principalBalance = parseFloat(loan.currentPrincipal);
+  const interestBalance = parseFloat(loan.currentInterest);
+  const feeBalance = parseFloat(loan.currentFees);
+  const payoffAmount = principalBalance + interestBalance + feeBalance;
 
   return (
     <Container>
@@ -197,7 +203,7 @@ const LoanDetail: React.FC = () => {
             </Typography>
             <Box sx={{ mt: 2 }}>
               <Typography><strong>Client:</strong> {loan.client.name}</Typography>
-              <Typography><strong>Principal:</strong> ${parseFloat(principal as any).toFixed(2)}</Typography>
+              <Typography><strong>Principal:</strong> ${parseFloat(originalPrincipal as any).toFixed(2)}</Typography>
               <Typography><strong>Interest Rate:</strong> {parseFloat(loan.interestRate as any).toFixed(2)}%</Typography>
               <Typography><strong>Term:</strong> {loan.termMonths} months</Typography>
               <Typography><strong>Status:</strong> <Chip label={loan.status.toUpperCase()} size="small" /></Typography>
@@ -215,7 +221,10 @@ const LoanDetail: React.FC = () => {
             </Typography>
             <Box sx={{ mt: 2 }}>
               <Typography><strong>Total Paid:</strong> ${parseFloat(totalPaid as any).toFixed(2)}</Typography>
-              <Typography><strong>Remaining Balance:</strong> ${parseFloat(remainingBalance as any).toFixed(2)}</Typography>
+              <Typography><strong>Principal Balance:</strong> ${parseFloat(principalBalance as any).toFixed(2)}</Typography>
+              <Typography><strong>Accrued Interest:</strong> ${parseFloat(interestBalance as any).toFixed(2)}</Typography>
+              <Typography><strong>Fees Due:</strong> ${parseFloat(feeBalance as any).toFixed(2)}</Typography>
+              <Typography><strong>Payoff Amount:</strong> ${parseFloat(payoffAmount as any).toFixed(2)}</Typography>
               <Typography><strong>Next Due Date:</strong> {loan.nextDueDate ? new Date(loan.nextDueDate).toLocaleDateString() : "N/A"}</Typography>
               <Typography><strong>Payments Made:</strong> {loan.payments.length}</Typography>
             </Box>

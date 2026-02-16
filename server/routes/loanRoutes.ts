@@ -24,7 +24,10 @@ function calculateAmortizationSchedule(
   annualRate: number,
   termMonths: number,
   startDate: Date,
-  frequency: string = "monthly"
+  frequency: string = "monthly",
+  paymentStructure: string = "level",
+  interestOnlyMonths: number = 0,
+  balloonAmount?: number
 ): Array<{
   dueDate: Date;
   principalDue: number;
@@ -38,35 +41,89 @@ function calculateAmortizationSchedule(
     totalDue: number;
   }> = [];
 
-  // Monthly rate
-  const monthlyRate = annualRate / 100 / 12;
-  
-  // Monthly payment using amortization formula
-  const monthlyPayment =
-    (principal * monthlyRate * Math.pow(1 + monthlyRate, termMonths)) /
-    (Math.pow(1 + monthlyRate, termMonths) - 1);
+  const periodsPerYear =
+    frequency === "weekly" ? 52 : frequency === "biweekly" ? 26 : 12;
+
+  const periods =
+    frequency === "monthly"
+      ? termMonths
+      : Math.max(1, Math.round((termMonths * periodsPerYear) / 12));
+
+  const ratePerPeriod = annualRate / 100 / periodsPerYear;
+
+  const addPeriods = (date: Date, i: number) => {
+    const d = new Date(date);
+    if (frequency === "weekly") {
+      d.setDate(d.getDate() + i * 7);
+    } else if (frequency === "biweekly") {
+      d.setDate(d.getDate() + i * 14);
+    } else {
+      d.setMonth(d.getMonth() + i);
+    }
+    return d;
+  };
+
+  const safeBalloon =
+    typeof balloonAmount === "number" && balloonAmount > 0 && balloonAmount < principal
+      ? balloonAmount
+      : 0;
+
+  const calcLevelPayment = (pv: number, r: number, n: number) => {
+    if (n <= 0) return 0;
+    if (r === 0) return pv / n;
+    return (pv * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+  };
+
+  const calcBalloonPayment = (pv: number, balloon: number, r: number, n: number) => {
+    if (n <= 0) return 0;
+    if (r === 0) return (pv - balloon) / n;
+    const discountedBalloon = balloon / Math.pow(1 + r, n);
+    const amortizedPV = pv - discountedBalloon;
+    return (amortizedPV * r) / (1 - Math.pow(1 + r, -n));
+  };
+
+  const levelPayment =
+    paymentStructure === "balloon" && safeBalloon > 0
+      ? calcBalloonPayment(principal, safeBalloon, ratePerPeriod, periods)
+      : calcLevelPayment(principal, ratePerPeriod, periods);
 
   let remainingPrincipal = principal;
+  const interestOnlyPeriods =
+    frequency === "monthly"
+      ? Math.min(Math.max(interestOnlyMonths, 0), periods)
+      : Math.min(
+          Math.max(Math.round((interestOnlyMonths * periodsPerYear) / 12), 0),
+          periods
+        );
 
-  for (let i = 1; i <= termMonths; i++) {
-    const interestDue = remainingPrincipal * monthlyRate;
-    const principalDue = monthlyPayment - interestDue;
+  for (let i = 1; i <= periods; i++) {
+    const dueDate = addPeriods(startDate, i);
 
-    // Adjust last payment for rounding
-    const adjustedPrincipalDue = i === termMonths ? remainingPrincipal : principalDue;
-    const adjustedTotalDue = adjustedPrincipalDue + interestDue;
+    const interestDueRaw = remainingPrincipal * ratePerPeriod;
 
-    const dueDate = new Date(startDate);
-    dueDate.setMonth(dueDate.getMonth() + i);
+    let principalDueRaw = 0;
+    if (paymentStructure === "interest_only" || (interestOnlyPeriods > 0 && i <= interestOnlyPeriods)) {
+      principalDueRaw = i === periods ? remainingPrincipal : 0;
+    } else if (paymentStructure === "balloon" && safeBalloon > 0) {
+      const principalComponent = levelPayment - interestDueRaw;
+      principalDueRaw = i === periods ? principalComponent + safeBalloon : principalComponent;
+    } else {
+      principalDueRaw = levelPayment - interestDueRaw;
+    }
+
+    // Adjust last payment for rounding / payoff
+    const adjustedPrincipalDueRaw = i === periods ? remainingPrincipal : principalDueRaw;
+    const adjustedTotalDueRaw = adjustedPrincipalDueRaw + interestDueRaw;
 
     schedule.push({
       dueDate,
-      principalDue: Math.round(adjustedPrincipalDue * 100) / 100,
-      interestDue: Math.round(interestDue * 100) / 100,
-      totalDue: Math.round(adjustedTotalDue * 100) / 100,
+      principalDue: Math.round(adjustedPrincipalDueRaw * 100) / 100,
+      interestDue: Math.round(interestDueRaw * 100) / 100,
+      totalDue: Math.round(adjustedTotalDueRaw * 100) / 100,
     });
 
-    remainingPrincipal -= principalDue;
+    remainingPrincipal -= adjustedPrincipalDueRaw;
+    if (remainingPrincipal < 0) remainingPrincipal = 0;
   }
 
   return schedule;
@@ -106,7 +163,10 @@ router.post(
       validatedData.interestRate,
       validatedData.termMonths,
       startDate,
-      validatedData.paymentFrequency
+      validatedData.paymentFrequency,
+      validatedData.paymentStructure,
+      validatedData.interestOnlyMonths ?? 0,
+      validatedData.balloonAmount
     );
 
     // Create loan with schedule in transaction
@@ -366,6 +426,11 @@ router.post(
         principal: 0,
       };
 
+      const asOf = effectiveDate ? new Date(effectiveDate) : new Date();
+
+      // Ensure schedule is loaded in-order
+      const schedule = loan.schedule;
+
       // Allocate to fees first
       if (parseFloat(loan.currentFees.toString()) > 0) {
         const feePayment = Math.min(remainingAmount, parseFloat(loan.currentFees.toString()));
@@ -373,25 +438,100 @@ router.post(
         remainingAmount -= feePayment;
       }
 
-      // Then interest
-      if (remainingAmount > 0 && parseFloat(loan.currentInterest.toString()) > 0) {
-        const interestPayment = Math.min(remainingAmount, parseFloat(loan.currentInterest.toString()));
-        allocations.interest = interestPayment;
-        remainingAmount -= interestPayment;
+      // Then interest (apply to schedule interest due, oldest first)
+      if (remainingAmount > 0) {
+        for (const row of schedule) {
+          if (remainingAmount <= 0) break;
+          const due = parseFloat(row.interestDue.toString());
+          const paid = parseFloat(row.paidInterest.toString());
+          const remaining = Math.max(0, due - paid);
+          if (remaining <= 0) continue;
+          const pay = Math.min(remainingAmount, remaining);
+          allocations.interest += pay;
+          remainingAmount -= pay;
+
+          await tx.loanPaymentSchedule.update({
+            where: { id: row.id },
+            data: {
+              paidInterest: paid + pay,
+            },
+          });
+        }
       }
 
-      // Finally principal
-      if (remainingAmount > 0 && parseFloat(loan.currentPrincipal.toString()) > 0) {
-        const principalPayment = Math.min(remainingAmount, parseFloat(loan.currentPrincipal.toString()));
-        allocations.principal = principalPayment;
-        remainingAmount -= principalPayment;
+      // Finally principal (apply to schedule principal due, oldest first)
+      if (remainingAmount > 0) {
+        for (const row of schedule) {
+          if (remainingAmount <= 0) break;
+          const due = parseFloat(row.principalDue.toString());
+          const paid = parseFloat(row.paidPrincipal.toString());
+          const remaining = Math.max(0, due - paid);
+          if (remaining <= 0) continue;
+          const pay = Math.min(remainingAmount, remaining);
+          allocations.principal += pay;
+          remainingAmount -= pay;
+
+          await tx.loanPaymentSchedule.update({
+            where: { id: row.id },
+            data: {
+              paidPrincipal: paid + pay,
+            },
+          });
+        }
       }
+
+      // Reload schedule to recompute balances + next due date
+      const updatedSchedule = await tx.loanPaymentSchedule.findMany({
+        where: { loanId: id },
+        orderBy: { dueDate: "asc" },
+      });
+
+      // Recompute row statuses (paid / partial / pending)
+      for (const row of updatedSchedule) {
+        const principalDue = parseFloat(row.principalDue.toString());
+        const interestDue = parseFloat(row.interestDue.toString());
+        const paidPrincipal = parseFloat(row.paidPrincipal.toString());
+        const paidInterest = parseFloat(row.paidInterest.toString());
+
+        let status: string = "pending";
+        if (paidPrincipal > 0 || paidInterest > 0) status = "partial";
+        if (paidPrincipal >= principalDue && paidInterest >= interestDue) status = "paid";
+
+        if (row.status !== status) {
+          await tx.loanPaymentSchedule.update({
+            where: { id: row.id },
+            data: { status },
+          });
+        }
+      }
+
+      const originalPrincipal = parseFloat(loan.principal.toString());
+      const totalPaidPrincipal = updatedSchedule.reduce(
+        (sum, row) => sum + parseFloat(row.paidPrincipal.toString()),
+        0
+      );
+      const newPrincipal = Math.max(0, originalPrincipal - totalPaidPrincipal);
+
+      const accruedInterestOutstanding = updatedSchedule
+        .filter((row) => row.dueDate <= asOf)
+        .reduce(
+          (sum, row) =>
+            sum +
+            Math.max(
+              0,
+              parseFloat(row.interestDue.toString()) - parseFloat(row.paidInterest.toString())
+            ),
+          0
+        );
+
+      const nextDue = updatedSchedule.find((row) => row.status !== "paid");
 
       // Update loan balances
       const newFees = parseFloat(loan.currentFees.toString()) - allocations.fees;
-      const newInterest = parseFloat(loan.currentInterest.toString()) - allocations.interest;
-      const newPrincipal = parseFloat(loan.currentPrincipal.toString()) - allocations.principal;
+      const newInterest = Math.max(0, accruedInterestOutstanding);
       const newTotalPaid = parseFloat(loan.totalPaid.toString()) + amount;
+
+      const paidOff = newPrincipal === 0 && newInterest === 0 && newFees === 0;
 
       await tx.loan.update({
         where: { id },
@@ -400,8 +540,9 @@ router.post(
           currentInterest: newInterest,
           currentPrincipal: newPrincipal,
           totalPaid: newTotalPaid,
-          substatus: newPrincipal === 0 ? 'paid_off' : loan.substatus,
-          status: newPrincipal === 0 ? 'paid_off' : loan.status,
+          nextDueDate: nextDue?.dueDate ?? null,
+          substatus: paidOff ? 'paid_off' : loan.substatus,
+          status: paidOff ? 'paid_off' : loan.status,
         },
       });
 

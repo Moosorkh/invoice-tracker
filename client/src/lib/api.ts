@@ -49,3 +49,48 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+
+const clearSessionAndRedirectToLogin = () => {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  localStorage.removeItem('tenantSlug');
+  window.location.href = '/login';
+};
+
+export const authFetch = async (
+  path: string,
+  init: RequestInit = {}
+): Promise<Response> => {
+  const url = getApiUrl(path);
+
+  const headers = new Headers(init.headers);
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  if (token && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  const res = await fetch(url, { ...init, headers });
+
+  if (res.status === 401 || res.status === 403) {
+    let message = '';
+    try {
+      const data = await res.clone().json();
+      message = (data?.error || data?.message || '') as string;
+    } catch {
+      // ignore
+    }
+
+    const shouldLogout =
+      res.status === 401 ||
+      message === 'Forbidden' ||
+      message === 'Unauthorized' ||
+      message.includes('Token does not match tenant context');
+
+    if (shouldLogout) {
+      clearSessionAndRedirectToLogin();
+    }
+  }
+
+  return res;
+};

@@ -28,7 +28,7 @@ import {
 import { Edit, Delete } from "@mui/icons-material";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { getApiUrl } from "@/lib/api";
+import { authFetch } from "@/lib/api";
 
 interface Client {
   id: string;
@@ -84,11 +84,7 @@ const Invoices = () => {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(getApiUrl("/api/invoices"), {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const res = await authFetch("/api/invoices");
 
       if (!res.ok) {
         if (res.status === 401) {
@@ -113,11 +109,7 @@ const Invoices = () => {
 
   const fetchClients = async () => {
     try {
-      const res = await fetch(getApiUrl("/api/clients"), {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const res = await authFetch("/api/clients");
 
       if (!res.ok) {
         throw new Error(`Error: ${res.status}`);
@@ -152,11 +144,10 @@ const Invoices = () => {
   const handleSubmit = async () => {
     setError("");
     try {
-      const response = await fetch(getApiUrl("/api/invoices"), {
+      const response = await authFetch("/api/invoices", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(form),
       });
@@ -196,11 +187,10 @@ const Invoices = () => {
     if (!currentInvoice) return;
 
     try {
-      const response = await fetch(getApiUrl(`/api/invoices/${currentInvoice.id}`), {
+      const response = await authFetch(`/api/invoices/${currentInvoice.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(form),
       });
@@ -235,11 +225,8 @@ const Invoices = () => {
     if (!currentInvoice) return;
 
     try {
-      const response = await fetch(getApiUrl(`/api/invoices/${currentInvoice.id}`), {
+      const response = await authFetch(`/api/invoices/${currentInvoice.id}`, {
         method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
       });
 
       if (!response.ok) {

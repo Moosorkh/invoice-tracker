@@ -69,7 +69,7 @@ export const authMiddleware: RequestHandler = async (req, res, next) => {
     
     next();
   } catch {
-    res.status(403).json({ error: "Forbidden" });
+    res.status(401).json({ error: "Unauthorized" });
     return;
   }
 };

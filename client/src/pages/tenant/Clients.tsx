@@ -26,7 +26,7 @@ import {
 } from "@mui/material";
 import { Edit, Delete, LockReset, Visibility, VisibilityOff } from "@mui/icons-material";
 import { useAuth } from "@/context/AuthContext";
-import { getApiUrl } from "@/lib/api";
+import { authFetch, getApiUrl } from "@/lib/api";
 
 interface PortalUser {
   id: string;
@@ -106,11 +106,7 @@ const Clients = () => {
     try {
       const url = getApiUrl("/api/clients");
       console.log('Fetching clients from:', url);
-      const res = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const res = await authFetch("/api/clients");
 
       console.log('Response status:', res.status);
       
@@ -144,11 +140,10 @@ const Clients = () => {
   const handleSubmit = async () => {
     setError("");
     try {
-      const response = await fetch(getApiUrl("/api/clients"), {
+      const response = await authFetch("/api/clients", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(form),
       });
@@ -198,11 +193,11 @@ const Clients = () => {
     if (!currentClient) return;
 
     try {
-      const response = await fetch(getApiUrl(`/api/clients/${currentClient.id}`), {
+      const response = await authFetch(`/api/clients/${currentClient.id}`,
+        {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(form),
       });
@@ -242,11 +237,9 @@ const Clients = () => {
     if (!currentClient) return;
 
     try {
-      const response = await fetch(getApiUrl(`/api/clients/${currentClient.id}`), {
+      const response = await authFetch(`/api/clients/${currentClient.id}`,
+        {
         method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
       });
 
       if (!response.ok) {
@@ -268,9 +261,7 @@ const Clients = () => {
 
   const handleOpenPortalDialog = async (client: Client) => {
     try {
-      const res = await fetch(getApiUrl(`/api/clients/${client.id}/portal-users`), {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await authFetch(`/api/clients/${client.id}/portal-users`);
       const data = await res.json();
       setPortalDialog({
         open: true,
@@ -302,11 +293,10 @@ const Clients = () => {
         ? `/api/clients/${portalDialog.clientId}/portal-user/direct`
         : `/api/clients/${portalDialog.clientId}/portal-user/invite`;
       
-      const res = await fetch(getApiUrl(endpoint), {
+      const res = await authFetch(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ 
           email: portalEmail,
@@ -364,13 +354,12 @@ const Clients = () => {
     }
 
     try {
-      const res = await fetch(
-        getApiUrl(`/api/clients/${portalDialog.clientId}/portal-users/${resetPasswordDialog.userId}/reset-password/direct`),
+      const res = await authFetch(
+        `/api/clients/${portalDialog.clientId}/portal-users/${resetPasswordDialog.userId}/reset-password/direct`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({ password: resetPasswordDialog.newPassword }),
         }
@@ -396,10 +385,10 @@ const Clients = () => {
     if (!portalDialog.clientId || !resetPasswordDialog.userId) return;
     
     try {
-      const res = await fetch(getApiUrl(`/api/clients/${portalDialog.clientId}/portal-users/${resetPasswordDialog.userId}/reset-password`), {
+      const res = await authFetch(`/api/clients/${portalDialog.clientId}/portal-users/${resetPasswordDialog.userId}/reset-password`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
       });
       
@@ -422,9 +411,8 @@ const Clients = () => {
   const handleDeletePortalUser = async (portalUserId: string) => {
     if (!portalDialog.clientId || !confirm("Remove portal access for this user?")) return;
     try {
-      await fetch(getApiUrl(`/api/clients/${portalDialog.clientId}/portal-users/${portalUserId}`), {
+      await authFetch(`/api/clients/${portalDialog.clientId}/portal-users/${portalUserId}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
       });
       handleOpenPortalDialog({ id: portalDialog.clientId, name: portalDialog.clientName, email: "" });
     } catch (error) {

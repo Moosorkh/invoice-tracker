@@ -28,7 +28,7 @@ import {
 import { Visibility, Delete } from "@mui/icons-material";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { getApiUrl } from "@/lib/api";
+import { authFetch, getApiUrl } from "@/lib/api";
 
 interface Client {
   id: string;
@@ -97,9 +97,7 @@ const Loans: React.FC = () => {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(getApiUrl("/api/loans"), {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await authFetch("/api/loans");
 
       if (!res.ok) {
         throw new Error(`Error: ${res.status}`);
@@ -120,9 +118,7 @@ const Loans: React.FC = () => {
 
   const fetchClients = async () => {
     try {
-      const res = await fetch(getApiUrl("/api/clients"), {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await authFetch("/api/clients");
 
       if (!res.ok) throw new Error(`Error: ${res.status}`);
 
@@ -186,11 +182,10 @@ const Loans: React.FC = () => {
       const startDate = new Date(form.startDate);
       startDate.setHours(12, 0, 0, 0);
 
-      const response = await fetch(getApiUrl("/api/loans"), {
+      const response = await authFetch("/api/loans", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           ...form,
@@ -239,9 +234,8 @@ const Loans: React.FC = () => {
     if (!window.confirm("Are you sure you want to delete this loan?")) return;
 
     try {
-      const response = await fetch(getApiUrl(`/api/loans/${id}`), {
+      const response = await authFetch(`/api/loans/${id}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (!response.ok) {

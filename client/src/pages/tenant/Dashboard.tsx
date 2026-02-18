@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Container, Typography, Grid, Paper } from "@mui/material";
 import { useAuth } from "@/context/AuthContext";
-import { authFetch, getApiUrl } from "@/lib/api";
+import { authFetch } from "@/lib/api";
 import {
   PieChart,
   Pie,

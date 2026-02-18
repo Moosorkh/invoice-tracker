@@ -28,7 +28,7 @@ import {
 import { Visibility, Delete } from "@mui/icons-material";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { authFetch, getApiUrl } from "@/lib/api";
+import { authFetch } from "@/lib/api";
 
 interface Client {
   id: string;

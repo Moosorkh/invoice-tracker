@@ -25,7 +25,7 @@ import {
   InputLabel,
 } from "@mui/material";
 import { useAuth } from "@/context/AuthContext";
-import { getApiUrl } from "@/lib/api";
+import { authFetch } from "@/lib/api";
 
 interface Loan {
   id: string;
@@ -93,9 +93,7 @@ const LoanDetail: React.FC = () => {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(getApiUrl(`/api/loans/${id}`), {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await authFetch(`/api/loans/${id}`);
 
       if (!res.ok) {
         throw new Error(`Error: ${res.status}`);
@@ -117,12 +115,9 @@ const LoanDetail: React.FC = () => {
     if (!loan) return;
 
     try {
-      const response = await fetch(getApiUrl(`/api/loans/${loan.id}/payments`), {
+      const response = await authFetch(`/api/loans/${loan.id}/payments`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           amount: paymentForm.amount,
           method: paymentForm.method,

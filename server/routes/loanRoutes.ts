@@ -438,46 +438,53 @@ router.post(
         remainingAmount -= feePayment;
       }
 
-      // Then interest (apply to schedule interest due, oldest first)
-      if (remainingAmount > 0) {
-        for (const row of schedule) {
-          if (remainingAmount <= 0) break;
-          const due = parseFloat(row.interestDue.toString());
-          const paid = parseFloat(row.paidInterest.toString());
-          const remaining = Math.max(0, due - paid);
-          if (remaining <= 0) continue;
-          const pay = Math.min(remainingAmount, remaining);
-          allocations.interest += pay;
-          remainingAmount -= pay;
+      // Row-by-row allocation: for each scheduled row in order, pay interest
+      // first then principal within that row before moving to the next.
+      // This prevents large payments from consuming all future interest before
+      // touching principal (the old two-pass bug).
+      const rowUpdates: Record<string, { paidInterest: number; paidPrincipal: number }> = {};
 
-          await tx.loanPaymentSchedule.update({
-            where: { id: row.id },
-            data: {
-              paidInterest: paid + pay,
-            },
-          });
+      for (const row of schedule) {
+        if (remainingAmount <= 0) break;
+
+        const interestDue    = parseFloat(row.interestDue.toString());
+        const principalDue   = parseFloat(row.principalDue.toString());
+        const curPaidInterest  = parseFloat(row.paidInterest.toString());
+        const curPaidPrincipal = parseFloat(row.paidPrincipal.toString());
+
+        const unpaidInterest  = Math.max(0, interestDue  - curPaidInterest);
+        const unpaidPrincipal = Math.max(0, principalDue - curPaidPrincipal);
+
+        if (unpaidInterest <= 0 && unpaidPrincipal <= 0) continue;
+
+        let newPaidInterest  = curPaidInterest;
+        let newPaidPrincipal = curPaidPrincipal;
+
+        // Interest first within this row
+        if (unpaidInterest > 0 && remainingAmount > 0) {
+          const pay = Math.min(remainingAmount, unpaidInterest);
+          allocations.interest += pay;
+          newPaidInterest += pay;
+          remainingAmount -= pay;
         }
+
+        // Then principal for this row
+        if (unpaidPrincipal > 0 && remainingAmount > 0) {
+          const pay = Math.min(remainingAmount, unpaidPrincipal);
+          allocations.principal += pay;
+          newPaidPrincipal += pay;
+          remainingAmount -= pay;
+        }
+
+        rowUpdates[row.id] = { paidInterest: newPaidInterest, paidPrincipal: newPaidPrincipal };
       }
 
-      // Finally principal (apply to schedule principal due, oldest first)
-      if (remainingAmount > 0) {
-        for (const row of schedule) {
-          if (remainingAmount <= 0) break;
-          const due = parseFloat(row.principalDue.toString());
-          const paid = parseFloat(row.paidPrincipal.toString());
-          const remaining = Math.max(0, due - paid);
-          if (remaining <= 0) continue;
-          const pay = Math.min(remainingAmount, remaining);
-          allocations.principal += pay;
-          remainingAmount -= pay;
-
-          await tx.loanPaymentSchedule.update({
-            where: { id: row.id },
-            data: {
-              paidPrincipal: paid + pay,
-            },
-          });
-        }
+      // Persist schedule row updates
+      for (const [rowId, upd] of Object.entries(rowUpdates)) {
+        await tx.loanPaymentSchedule.update({
+          where: { id: rowId },
+          data: { paidInterest: upd.paidInterest, paidPrincipal: upd.paidPrincipal },
+        });
       }
 
       // Reload schedule to recompute balances + next due date

@@ -398,14 +398,19 @@ router.post(
     const { id } = req.params;
     const tenantId = req.user!.tenantId;
     const userId = req.user!.userId;
-    const { amount, method, effectiveDate, notes } = req.body;
+    const { amount: rawAmount, method, effectiveDate, notes } = req.body;
+    const amount = parseFloat(rawAmount);
 
     if (!tenantId) {
       return res.status(400).json({ error: "No tenant associated with user" });
     }
 
-    if (!amount || amount <= 0) {
-      return res.status(400).json({ error: "Payment amount must be positive" });
+    if (isNaN(amount) || amount <= 0) {
+      return res.status(400).json({ error: "Payment amount must be a positive number" });
+    }
+
+    if (amount > 10_000_000) {
+      return res.status(400).json({ error: "Payment amount exceeds maximum allowed" });
     }
 
     const loan = await prisma.loan.findFirst({

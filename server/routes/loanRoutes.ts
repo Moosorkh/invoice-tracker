@@ -422,6 +422,26 @@ router.post(
       return res.status(404).json({ error: "Loan not found" });
     }
 
+    // Validate and clamp effectiveDate
+    let asOf: Date;
+    if (effectiveDate) {
+      asOf = new Date(effectiveDate);
+      if (isNaN(asOf.getTime())) {
+        return res.status(400).json({ error: "Invalid effectiveDate" });
+      }
+      const loanStart = new Date(loan.startDate);
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      if (asOf < loanStart) {
+        return res.status(400).json({ error: "effectiveDate cannot be before the loan start date" });
+      }
+      if (asOf > tomorrow) {
+        return res.status(400).json({ error: "effectiveDate cannot be in the future" });
+      }
+    } else {
+      asOf = new Date();
+    }
+
     // Payment allocation waterfall: Fees → Interest → Principal
     const result = await prisma.$transaction(async (tx) => {
       let remainingAmount = amount;
@@ -430,8 +450,6 @@ router.post(
         interest: 0,
         principal: 0,
       };
-
-      const asOf = effectiveDate ? new Date(effectiveDate) : new Date();
 
       // Ensure schedule is loaded in-order
       const schedule = loan.schedule;
@@ -579,7 +597,7 @@ router.post(
           principalBalance: newPrincipal,
           interestBalance: newInterest,
           feeBalance: newFees,
-          effectiveDate: effectiveDate ? new Date(effectiveDate) : new Date(),
+          effectiveDate: asOf,
           description: `Payment: $${amount.toFixed(2)} (Fees: $${allocations.fees.toFixed(2)}, Interest: $${allocations.interest.toFixed(2)}, Principal: $${allocations.principal.toFixed(2)})`,
           metadata: { allocations, overpayment: remainingAmount },
           createdBy: userId,

@@ -413,6 +413,21 @@ router.post(
       return res.status(400).json({ error: "Payment amount exceeds maximum allowed" });
     }
 
+    const VALID_METHODS = ["cash", "check", "ach", "wire", "bank_transfer", "credit_card", "debit_card", "manual", "other"];
+    const resolvedMethod = method ?? "manual";
+    if (!VALID_METHODS.includes(resolvedMethod)) {
+      return res.status(400).json({ error: `Invalid payment method. Must be one of: ${VALID_METHODS.join(", ")}` });
+    }
+
+    if (notes !== undefined && notes !== null) {
+      if (typeof notes !== "string") {
+        return res.status(400).json({ error: "Notes must be a string" });
+      }
+      if (notes.length > 500) {
+        return res.status(400).json({ error: "Notes must be 500 characters or fewer" });
+      }
+    }
+
     const loan = await prisma.loan.findFirst({
       where: { id, tenantId },
       include: { schedule: { orderBy: { dueDate: 'asc' } } },
@@ -581,8 +596,8 @@ router.post(
         data: {
           loanId: id,
           amount,
-          method: method || 'manual',
-          notes,
+          method: resolvedMethod,
+          notes: notes ?? null,
         },
       });
 

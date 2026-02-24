@@ -6,6 +6,7 @@ import { checkLoanLimit } from "../middleware/usageLimits";
 import { asyncHandler } from "../utils/routeHandler";
 import { prisma } from "../utils/prisma";
 import { createLoanSchema, updateLoanSchema } from "../validators/loanValidator";
+import { logDelete } from "../utils/auditLog";
 
 const router = express.Router();
 
@@ -385,6 +386,14 @@ router.delete(
         id,
         tenantId 
       } 
+    });
+
+    // Fire-and-forget audit log — does not affect the response
+    void logDelete(req as any, "Loan", id, {
+      loanNumber: existingLoan.loanNumber,
+      principal: existingLoan.principal,
+      status: existingLoan.status,
+      clientId: existingLoan.clientId,
     });
 
     res.json({ message: "Loan deleted successfully" });

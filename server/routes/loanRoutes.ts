@@ -1,7 +1,7 @@
 import express from "express";
 import { Prisma } from "@prisma/client";
 import { authMiddleware } from "../middleware/authMiddleware";
-import { requireManager } from "../middleware/rbacMiddleware";
+import { requireManager, requireOperator } from "../middleware/rbacMiddleware";
 import { checkLoanLimit } from "../middleware/usageLimits";
 import { asyncHandler } from "../utils/routeHandler";
 import { prisma } from "../utils/prisma";
@@ -394,6 +394,7 @@ router.delete(
 // Post payment to loan
 router.post(
   "/:id/payments",
+  requireOperator,
   asyncHandler(async (req, res) => {
     const { id } = req.params;
     const tenantId = req.user!.tenantId;

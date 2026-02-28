@@ -13,10 +13,20 @@ const router = express.Router();
 router.use(authMiddleware);
 
 // Helper: Generate loan number
+// Uses the highest existing number for this tenant+year rather than a count,
+// so gaps from deletions don't cause collisions, and a P2002 retry below
+// handles the residual race window.
 async function generateLoanNumber(tenantId: string): Promise<string> {
   const year = new Date().getFullYear();
-  const count = await prisma.loan.count({ where: { tenantId } });
-  return `LOAN-${year}-${String(count + 1).padStart(5, "0")}`;
+  const prefix = `LOAN-${year}-`;
+  const last = await prisma.loan.findFirst({
+    where: { tenantId, loanNumber: { startsWith: prefix } },
+    orderBy: { loanNumber: "desc" },
+    select: { loanNumber: true },
+  });
+  const lastNum = last ? parseInt(last.loanNumber.slice(prefix.length), 10) : 0;
+  const next = isNaN(lastNum) ? 1 : lastNum + 1;
+  return `${prefix}${String(next).padStart(5, "0")}`;
 }
 
 // Helper: Calculate amortization schedule
@@ -153,7 +163,6 @@ router.post(
       return res.status(404).json({ error: "Client not found" });
     }
 
-    const loanNumber = await generateLoanNumber(tenantId);
     const startDate = new Date(validatedData.startDate);
     const maturityDate = new Date(startDate);
     maturityDate.setMonth(maturityDate.getMonth() + validatedData.termMonths);
@@ -170,69 +179,83 @@ router.post(
       validatedData.balloonAmount
     );
 
-    // Create loan with schedule in transaction
-    const loan = await prisma.$transaction(async (tx) => {
-      const newLoan = await tx.loan.create({
-        data: {
-          loanNumber,
-          productCategory: validatedData.productCategory,
-          accrualMethod: validatedData.accrualMethod,
-          paymentStructure: validatedData.paymentStructure,
-          dayCountConvention: validatedData.dayCountConvention,
-          principal: validatedData.principal,
-          interestRate: validatedData.interestRate,
-          rateType: validatedData.rateType,
-          termMonths: validatedData.termMonths,
-          paymentFrequency: validatedData.paymentFrequency,
-          amortizationType: validatedData.amortizationType,
-          interestOnlyMonths: validatedData.interestOnlyMonths,
-          balloonAmount: validatedData.balloonAmount,
-          status: "active",
-          startDate,
-          firstDueDate: schedule[0]?.dueDate || startDate,
-          maturityDate,
-          nextDueDate: schedule[0]?.dueDate,
-          currentPrincipal: validatedData.principal,
-          graceDays: validatedData.graceDays,
-          lateFeeAmount: validatedData.lateFeeAmount,
-          lateFeePercent: validatedData.lateFeePercent,
-          description: validatedData.description,
-          internalNotes: validatedData.internalNotes,
-          activatedAt: new Date(),
-          tenant: { connect: { id: tenantId } },
-          client: { connect: { id: validatedData.clientId } },
-          user: { connect: { id: userId } },
-        },
-      });
+    // Retry up to 3 times in case of a loanNumber unique-constraint race
+    let loan: any;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const loanNumber = await generateLoanNumber(tenantId);
+      try {
+        loan = await prisma.$transaction(async (tx) => {
+          const newLoan = await tx.loan.create({
+            data: {
+              loanNumber,
+              productCategory: validatedData.productCategory,
+              accrualMethod: validatedData.accrualMethod,
+              paymentStructure: validatedData.paymentStructure,
+              dayCountConvention: validatedData.dayCountConvention,
+              principal: validatedData.principal,
+              interestRate: validatedData.interestRate,
+              rateType: validatedData.rateType,
+              termMonths: validatedData.termMonths,
+              paymentFrequency: validatedData.paymentFrequency,
+              amortizationType: validatedData.amortizationType,
+              interestOnlyMonths: validatedData.interestOnlyMonths,
+              balloonAmount: validatedData.balloonAmount,
+              status: "active",
+              startDate,
+              firstDueDate: schedule[0]?.dueDate || startDate,
+              maturityDate,
+              nextDueDate: schedule[0]?.dueDate,
+              currentPrincipal: validatedData.principal,
+              graceDays: validatedData.graceDays,
+              lateFeeAmount: validatedData.lateFeeAmount,
+              lateFeePercent: validatedData.lateFeePercent,
+              description: validatedData.description,
+              internalNotes: validatedData.internalNotes,
+              activatedAt: new Date(),
+              tenant: { connect: { id: tenantId } },
+              client: { connect: { id: validatedData.clientId } },
+              user: { connect: { id: userId } },
+            },
+          });
 
-      // Create initial ledger event (disbursement)
-      await tx.loanEvent.create({
-        data: {
-          loanId: newLoan.id,
-          type: "disbursement",
-          principalAmount: validatedData.principal,
-          principalBalance: validatedData.principal,
-          interestBalance: 0,
-          feeBalance: 0,
-          effectiveDate: startDate,
-          description: "Initial loan disbursement",
-          createdBy: userId,
-        },
-      });
+          // Create initial ledger event (disbursement)
+          await tx.loanEvent.create({
+            data: {
+              loanId: newLoan.id,
+              type: "disbursement",
+              principalAmount: validatedData.principal,
+              principalBalance: validatedData.principal,
+              interestBalance: 0,
+              feeBalance: 0,
+              effectiveDate: startDate,
+              description: "Initial loan disbursement",
+              createdBy: userId,
+            },
+          });
 
-      // Create schedule rows
-      await tx.loanPaymentSchedule.createMany({
-        data: schedule.map((item) => ({
-          loanId: newLoan.id,
-          dueDate: item.dueDate,
-          principalDue: item.principalDue,
-          interestDue: item.interestDue,
-          totalDue: item.totalDue,
-        })),
-      });
+          // Create schedule rows
+          await tx.loanPaymentSchedule.createMany({
+            data: schedule.map((item) => ({
+              loanId: newLoan.id,
+              dueDate: item.dueDate,
+              principalDue: item.principalDue,
+              interestDue: item.interestDue,
+              totalDue: item.totalDue,
+            })),
+          });
 
-      return newLoan;
-    });
+          return newLoan;
+        });
+        break; // success — exit retry loop
+      } catch (err: any) {
+        if (err?.code === "P2002" && attempt < 2) continue; // unique constraint — retry
+        throw err;
+      }
+    }
+
+    if (!loan) {
+      return res.status(500).json({ error: "Failed to generate a unique loan number after retries" });
+    }
 
     const loanWithSchedule = await prisma.loan.findUnique({
       where: { id: loan.id },

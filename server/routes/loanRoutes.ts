@@ -490,6 +490,23 @@ router.post(
       asOf = new Date();
     }
 
+    // Reject overpayments — amount cannot exceed total outstanding balance
+    const outstandingPrincipal = parseFloat(loan.currentPrincipal.toString());
+    const outstandingInterest  = parseFloat(loan.currentInterest.toString());
+    const outstandingFees      = parseFloat(loan.currentFees.toString());
+    const totalOutstanding     = outstandingPrincipal + outstandingInterest + outstandingFees;
+
+    if (totalOutstanding <= 0) {
+      return res.status(400).json({ error: "This loan has no outstanding balance" });
+    }
+
+    if (amount > totalOutstanding + 0.01) { // 1-cent tolerance for rounding
+      return res.status(400).json({
+        error: "Payment exceeds outstanding balance",
+        payoffAmount: Math.round(totalOutstanding * 100) / 100,
+      });
+    }
+
     // Payment allocation waterfall: Fees → Interest → Principal
     const result = await prisma.$transaction(async (tx) => {
       let remainingAmount = amount;

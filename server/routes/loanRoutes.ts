@@ -5,7 +5,7 @@ import { requireManager, requireOperator } from "../middleware/rbacMiddleware";
 import { checkLoanLimit } from "../middleware/usageLimits";
 import { asyncHandler } from "../utils/routeHandler";
 import { prisma } from "../utils/prisma";
-import { createLoanSchema, updateLoanSchema } from "../validators/loanValidator";
+import { createLoanSchema, updateLoanSchema, loanQuerySchema } from "../validators/loanValidator";
 import { logDelete } from "../utils/auditLog";
 
 const router = express.Router();
@@ -274,24 +274,23 @@ router.get(
   "/",
   asyncHandler(async (req, res) => {
     const tenantId = req.user!.tenantId;
-    const { status, clientId, limit, offset } = req.query;
-
     if (!tenantId) {
       return res.status(400).json({ error: "No tenant associated with user" });
     }
 
-    const where: any = { tenantId };
-
-    if (status && typeof status === "string") {
-      where.status = status;
+    const query = loanQuerySchema.safeParse(req.query);
+    if (!query.success) {
+      return res.status(400).json({ error: "Invalid query parameters", details: query.error.flatten() });
     }
 
-    if (clientId && typeof clientId === "string") {
-      where.clientId = clientId;
-    }
+    const { status, clientId, limit, offset } = query.data;
 
-    const take = limit ? parseInt(limit as string) : undefined;
-    const skip = offset ? parseInt(offset as string) : undefined;
+    const where: Prisma.LoanWhereInput = { tenantId };
+    if (status) where.status = status;
+    if (clientId) where.clientId = clientId;
+
+    const take = limit;
+    const skip = offset;
 
     const loans = await prisma.loan.findMany({
       where,

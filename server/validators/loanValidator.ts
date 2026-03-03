@@ -32,6 +32,13 @@ export const createLoanSchema = z.object({
   internalNotes: z.string().optional(),
 });
 
+export const loanQuerySchema = z.object({
+  status: z.enum(["draft", "approved", "active", "paid_off", "charged_off", "in_default"]).optional(),
+  clientId: z.string().uuid().optional(),
+  limit: z.coerce.number().int().min(1).max(200).optional(),
+  offset: z.coerce.number().int().min(0).optional(),
+});
+
 export const updateLoanSchema = z.object({
   status: z.enum(["draft", "approved", "active", "paid_off", "charged_off", "in_default"]).optional(),
   substatus: z.string().optional(),

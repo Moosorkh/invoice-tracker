@@ -1,5 +1,13 @@
 import React, { useEffect, useState } from "react";
-import { Container, Typography, Grid, Paper } from "@mui/material";
+import { Container, Typography, Grid, Paper, Box, CircularProgress } from "@mui/material";
+import PeopleIcon from "@mui/icons-material/People";
+import ReceiptIcon from "@mui/icons-material/Receipt";
+import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
+import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
+import WarningIcon from "@mui/icons-material/Warning";
+import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import { useAuth } from "@/context/AuthContext";
 import { authFetch } from "@/lib/api";
 import {
@@ -10,6 +18,11 @@ import {
   Legend,
   Tooltip,
 } from "recharts";
+
+const fmt = (n: number) =>
+  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
+
+const fmtCount = (n: number) => new Intl.NumberFormat("en-US").format(n);
 
 interface Stats {
   totalInvoices: number;
@@ -57,6 +70,7 @@ const Dashboard: React.FC = () => {
     activeLoans: 0,
     closedLoans: 0,
   });
+  const [loading, setLoading] = useState(true);
 
   const { token } = useAuth();
 
@@ -110,7 +124,7 @@ const Dashboard: React.FC = () => {
           (loan) => loan.status === "active"
         ).length;
         const closedLoans = loans.filter(
-          (loan) => loan.status === "closed"
+          (loan) => loan.status === "paid_off" || loan.status === "closed"
         ).length;
 
         setStats({
@@ -128,130 +142,81 @@ const Dashboard: React.FC = () => {
         });
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchStats();
   }, [token]);
 
-  return (
-    <Container>
+  if (loading) {
+    return (
+      <Container sx={{ display: "flex", justifyContent: "center", mt: 8 }}>
+        <CircularProgress />
+      </Container>
+    );
+  }
+
+  // Stat card helper
+  const StatCard = ({ label, value, icon, color, bgcolor }: { label: string; value: string; icon: React.ReactNode; color: string; bgcolor: string }) => (
+    <Paper sx={{ p: 3, bgcolor, borderRadius: 2, display: "flex", alignItems: "center", gap: 2 }}>
+      <Box sx={{ color, fontSize: 40, display: "flex" }}>{icon}</Box>
+      <Box>
+        <Typography variant="body2" color="text.secondary">{label}</Typography>
+        <Typography variant="h5" fontWeight={700}>{value}</Typography>
+      </Box>
+    </Paper>
+  );
       <Typography variant="h4" gutterBottom>
         Dashboard
       </Typography>
       
       {/* Overview Stats */}
-      <Typography variant="h6" sx={{ mt: 3, mb: 2 }}>
-        Overview
-      </Typography>
+      <Typography variant="h6" sx={{ mt: 3, mb: 2 }}>Overview</Typography>
       <Grid container spacing={3}>
         <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 3, textAlign: "center", bgcolor: "#e3f2fd" }}>
-            <Typography variant="h6" color="primary">
-              Total Clients
-            </Typography>
-            <Typography variant="h3">{stats.clientCount}</Typography>
-          </Paper>
+          <StatCard label="Total Clients" value={fmtCount(stats.clientCount)} icon={<PeopleIcon fontSize="inherit" />} color="#1565c0" bgcolor="#e3f2fd" />
         </Grid>
         <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 3, textAlign: "center", bgcolor: "#f3e5f5" }}>
-            <Typography variant="h6" color="secondary">
-              Total Revenue
-            </Typography>
-            <Typography variant="h3">
-              ${(stats.totalInvoiceAmount + stats.totalCollected).toFixed(2)}
-            </Typography>
-          </Paper>
+          <StatCard label="Loan Portfolio" value={fmt(stats.totalLoanPrincipal)} icon={<AccountBalanceIcon fontSize="inherit" />} color="#2e7d32" bgcolor="#e8f5e9" />
         </Grid>
         <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 3, textAlign: "center", bgcolor: "#e8f5e9" }}>
-            <Typography variant="h6" color="success.main">
-              Loan Portfolio
-            </Typography>
-            <Typography variant="h3">
-              ${stats.totalLoanPrincipal.toFixed(2)}
-            </Typography>
-          </Paper>
+          <StatCard label="Total Collected" value={fmt(stats.totalCollected)} icon={<AttachMoneyIcon fontSize="inherit" />} color="#6a1b9a" bgcolor="#f3e5f5" />
         </Grid>
       </Grid>
 
       {/* Invoice Stats */}
-      <Typography variant="h6" sx={{ mt: 4, mb: 2 }}>
-        Invoices
-      </Typography>
+      <Typography variant="h6" sx={{ mt: 4, mb: 2 }}>Invoices</Typography>
       <Grid container spacing={3}>
         <Grid item xs={12} md={3}>
-          <Paper sx={{ p: 3, textAlign: "center" }}>
-            <Typography variant="h6" color="primary">
-              Total Invoices
-            </Typography>
-            <Typography variant="h3">{stats.totalInvoices}</Typography>
-          </Paper>
+          <StatCard label="Total Invoices" value={fmtCount(stats.totalInvoices)} icon={<ReceiptIcon fontSize="inherit" />} color="#1565c0" bgcolor="#e3f2fd" />
         </Grid>
         <Grid item xs={12} md={3}>
-          <Paper sx={{ p: 3, textAlign: "center" }}>
-            <Typography variant="h6" color="success.main">
-              Paid
-            </Typography>
-            <Typography variant="h3">{stats.paidInvoices}</Typography>
-          </Paper>
+          <StatCard label="Paid" value={fmtCount(stats.paidInvoices)} icon={<CheckCircleIcon fontSize="inherit" />} color="#2e7d32" bgcolor="#e8f5e9" />
         </Grid>
         <Grid item xs={12} md={3}>
-          <Paper sx={{ p: 3, textAlign: "center" }}>
-            <Typography variant="h6" color="warning.main">
-              Pending
-            </Typography>
-            <Typography variant="h3">{stats.pendingInvoices}</Typography>
-          </Paper>
+          <StatCard label="Pending" value={fmtCount(stats.pendingInvoices)} icon={<HourglassEmptyIcon fontSize="inherit" />} color="#e65100" bgcolor="#fff3e0" />
         </Grid>
         <Grid item xs={12} md={3}>
-          <Paper sx={{ p: 3, textAlign: "center" }}>
-            <Typography variant="h6" color="error.main">
-              Overdue
-            </Typography>
-            <Typography variant="h3">{stats.overdueInvoices}</Typography>
-          </Paper>
+          <StatCard label="Overdue" value={fmtCount(stats.overdueInvoices)} icon={<WarningIcon fontSize="inherit" />} color="#c62828" bgcolor="#ffebee" />
         </Grid>
       </Grid>
 
       {/* Loan Stats */}
-      <Typography variant="h6" sx={{ mt: 4, mb: 2 }}>
-        Loans
-      </Typography>
+      <Typography variant="h6" sx={{ mt: 4, mb: 2 }}>Loans</Typography>
       <Grid container spacing={3}>
         <Grid item xs={12} md={3}>
-          <Paper sx={{ p: 3, textAlign: "center" }}>
-            <Typography variant="h6" color="primary">
-              Total Loans
-            </Typography>
-            <Typography variant="h3">{stats.totalLoans}</Typography>
-          </Paper>
+          <StatCard label="Total Loans" value={fmtCount(stats.totalLoans)} icon={<AccountBalanceIcon fontSize="inherit" />} color="#1565c0" bgcolor="#e3f2fd" />
         </Grid>
         <Grid item xs={12} md={3}>
-          <Paper sx={{ p: 3, textAlign: "center" }}>
-            <Typography variant="h6" color="success.main">
-              Active
-            </Typography>
-            <Typography variant="h3">{stats.activeLoans}</Typography>
-          </Paper>
+          <StatCard label="Active" value={fmtCount(stats.activeLoans)} icon={<TrendingUpIcon fontSize="inherit" />} color="#2e7d32" bgcolor="#e8f5e9" />
         </Grid>
         <Grid item xs={12} md={3}>
-          <Paper sx={{ p: 3, textAlign: "center" }}>
-            <Typography variant="h6" color="info.main">
-              Closed
-            </Typography>
-            <Typography variant="h3">{stats.closedLoans}</Typography>
-          </Paper>
+          <StatCard label="Closed" value={fmtCount(stats.closedLoans)} icon={<CheckCircleIcon fontSize="inherit" />} color="#546e7a" bgcolor="#eceff1" />
         </Grid>
         <Grid item xs={12} md={3}>
-          <Paper sx={{ p: 3, textAlign: "center" }}>
-            <Typography variant="h6" color="success.main">
-              Collected
-            </Typography>
-            <Typography variant="h3">
-              ${stats.totalCollected.toFixed(2)}
-            </Typography>
-          </Paper>
+          <StatCard label="Total Collected" value={fmt(stats.totalCollected)} icon={<AttachMoneyIcon fontSize="inherit" />} color="#6a1b9a" bgcolor="#f3e5f5" />
         </Grid>
       </Grid>
 

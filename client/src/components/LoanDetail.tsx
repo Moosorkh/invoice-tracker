@@ -23,9 +23,14 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
+  CircularProgress,
+  Alert,
 } from "@mui/material";
 import { useAuth } from "@/context/AuthContext";
 import { authFetch } from "@/lib/api";
+
+const fmtCurrency = (n: number) =>
+  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
 
 interface Loan {
   id: string;
@@ -77,6 +82,7 @@ const LoanDetail: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [paymentError, setPaymentError] = useState<{ message: string; payoffAmount?: number } | null>(null);
   const [paymentForm, setPaymentForm] = useState({
     amount: 0,
     method: "bank_transfer",
@@ -113,6 +119,7 @@ const LoanDetail: React.FC = () => {
 
   const handlePayment = async () => {
     if (!loan) return;
+    setPaymentError(null);
 
     try {
       const response = await authFetch(`/api/loans/${loan.id}/payments`, {
@@ -127,7 +134,11 @@ const LoanDetail: React.FC = () => {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to record payment");
+        setPaymentError({
+          message: errorData.error || "Failed to record payment",
+          payoffAmount: errorData.payoffAmount,
+        });
+        return;
       }
 
       setPaymentDialogOpen(false);
@@ -135,9 +146,7 @@ const LoanDetail: React.FC = () => {
       fetchLoan();
     } catch (error) {
       console.error("Error recording payment:", error);
-      setError(
-        error instanceof Error ? error.message : "Failed to record payment"
-      );
+      setPaymentError({ message: error instanceof Error ? error.message : "Failed to record payment" });
     }
   };
 
@@ -156,17 +165,17 @@ const LoanDetail: React.FC = () => {
 
   if (loading) {
     return (
-      <Container>
-        <Typography>Loading...</Typography>
+      <Container sx={{ display: "flex", justifyContent: "center", mt: 8 }}>
+        <CircularProgress />
       </Container>
     );
   }
 
   if (error || !loan) {
     return (
-      <Container>
-        <Typography color="error">{error || "Loan not found"}</Typography>
-        <Button onClick={() => navigate(tenantSlug ? `/t/${tenantSlug}/loans` : "/")}>Back to Loans</Button>
+      <Container sx={{ mt: 4 }}>
+        <Alert severity="error" sx={{ mb: 2 }}>{error || "Loan not found"}</Alert>
+        <Button variant="outlined" onClick={() => navigate(tenantSlug ? `/t/${tenantSlug}/loans` : "/")}>Back to Loans</Button>
       </Container>
     );
   }
@@ -181,12 +190,24 @@ const LoanDetail: React.FC = () => {
   return (
     <Container>
       <Box sx={{ mb: 2, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <Typography variant="h4">{loan.loanNumber}</Typography>
         <Box>
-          <Button onClick={() => setPaymentDialogOpen(true)} variant="contained" sx={{ mr: 1 }}>
+          <Typography variant="h4" sx={{ lineHeight: 1.2 }}>{loan.loanNumber}</Typography>
+          <Typography variant="body2" color="text.secondary">{loan.client.name}</Typography>
+        </Box>
+        <Box>
+          <Button
+            onClick={() => {
+              setPaymentError(null);
+              setPaymentForm({ amount: payoffAmount, method: "bank_transfer", notes: "" });
+              setPaymentDialogOpen(true);
+            }}
+            variant="contained"
+            disabled={loan.status === "paid_off" || loan.status === "charged_off"}
+            sx={{ mr: 1 }}
+          >
             Record Payment
           </Button>
-          <Button onClick={() => navigate(tenantSlug ? `/t/${tenantSlug}/loans` : "/")}>Back</Button>
+          <Button variant="outlined" onClick={() => navigate(tenantSlug ? `/t/${tenantSlug}/loans` : "/")}>Back</Button>
         </Box>
       </Box>
 
@@ -198,7 +219,7 @@ const LoanDetail: React.FC = () => {
             </Typography>
             <Box sx={{ mt: 2 }}>
               <Typography><strong>Client:</strong> {loan.client.name}</Typography>
-              <Typography><strong>Principal:</strong> ${parseFloat(originalPrincipal as any).toFixed(2)}</Typography>
+              <Typography><strong>Principal:</strong> {fmtCurrency(originalPrincipal)}</Typography>
               <Typography><strong>Interest Rate:</strong> {parseFloat(loan.interestRate as any).toFixed(2)}%</Typography>
               <Typography><strong>Term:</strong> {loan.termMonths} months</Typography>
               <Typography><strong>Status:</strong> <Chip label={loan.status.toUpperCase()} size="small" /></Typography>
@@ -215,11 +236,11 @@ const LoanDetail: React.FC = () => {
               Payment Summary
             </Typography>
             <Box sx={{ mt: 2 }}>
-              <Typography><strong>Total Paid:</strong> ${parseFloat(totalPaid as any).toFixed(2)}</Typography>
-              <Typography><strong>Principal Balance:</strong> ${parseFloat(principalBalance as any).toFixed(2)}</Typography>
-              <Typography><strong>Accrued Interest:</strong> ${parseFloat(interestBalance as any).toFixed(2)}</Typography>
-              <Typography><strong>Fees Due:</strong> ${parseFloat(feeBalance as any).toFixed(2)}</Typography>
-              <Typography><strong>Payoff Amount:</strong> ${parseFloat(payoffAmount as any).toFixed(2)}</Typography>
+              <Typography><strong>Total Paid:</strong> {fmtCurrency(totalPaid)}</Typography>
+              <Typography><strong>Principal Balance:</strong> {fmtCurrency(principalBalance)}</Typography>
+              <Typography><strong>Accrued Interest:</strong> {fmtCurrency(interestBalance)}</Typography>
+              <Typography><strong>Fees Due:</strong> {fmtCurrency(feeBalance)}</Typography>
+              <Typography sx={{ fontWeight: 700, color: "primary.main" }}><strong>Payoff Amount:</strong> {fmtCurrency(payoffAmount)}</Typography>
               <Typography><strong>Next Due Date:</strong> {loan.nextDueDate ? new Date(loan.nextDueDate).toLocaleDateString() : "N/A"}</Typography>
               <Typography><strong>Payments Made:</strong> {loan.payments.length}</Typography>
             </Box>
@@ -246,13 +267,16 @@ const LoanDetail: React.FC = () => {
             </TableHead>
             <TableBody>
               {loan.schedule.map((item) => (
-                <TableRow key={item.id}>
+                <TableRow
+                  key={item.id}
+                  sx={item.status === "overdue" ? { bgcolor: "#fff5f5" } : undefined}
+                >
                   <TableCell>{new Date(item.dueDate).toLocaleDateString()}</TableCell>
-                  <TableCell>${parseFloat(item.principalDue).toFixed(2)}</TableCell>
-                  <TableCell>${parseFloat(item.interestDue).toFixed(2)}</TableCell>
-                  <TableCell>${parseFloat(item.totalDue).toFixed(2)}</TableCell>
-                  <TableCell>${parseFloat(item.paidPrincipal).toFixed(2)}</TableCell>
-                  <TableCell>${parseFloat(item.paidInterest).toFixed(2)}</TableCell>
+                  <TableCell>{fmtCurrency(parseFloat(item.principalDue))}</TableCell>
+                  <TableCell>{fmtCurrency(parseFloat(item.interestDue))}</TableCell>
+                  <TableCell>{fmtCurrency(parseFloat(item.totalDue))}</TableCell>
+                  <TableCell>{fmtCurrency(parseFloat(item.paidPrincipal))}</TableCell>
+                  <TableCell>{fmtCurrency(parseFloat(item.paidInterest))}</TableCell>
                   <TableCell>
                     <Chip
                       label={item.status.toUpperCase()}
@@ -292,7 +316,7 @@ const LoanDetail: React.FC = () => {
                 loan.payments.map((payment) => (
                   <TableRow key={payment.id}>
                     <TableCell>{new Date(payment.createdAt).toLocaleDateString()}</TableCell>
-                    <TableCell>${parseFloat(payment.amount).toFixed(2)}</TableCell>
+                    <TableCell>{fmtCurrency(parseFloat(payment.amount))}</TableCell>
                     <TableCell>{payment.method}</TableCell>
                     <TableCell>{payment.notes || "-"}</TableCell>
                   </TableRow>
@@ -304,9 +328,19 @@ const LoanDetail: React.FC = () => {
       </Paper>
 
       {/* Payment Dialog */}
-      <Dialog open={paymentDialogOpen} onClose={() => setPaymentDialogOpen(false)}>
-        <DialogTitle>Record Payment</DialogTitle>
+      <Dialog open={paymentDialogOpen} onClose={() => { setPaymentDialogOpen(false); setPaymentError(null); }} fullWidth maxWidth="sm">
+        <DialogTitle>Record Payment — {loan.loanNumber}</DialogTitle>
         <DialogContent>
+          {paymentError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {paymentError.message}
+              {paymentError.payoffAmount !== undefined && (
+                <Box sx={{ mt: 0.5 }}>
+                  Current payoff amount: <strong>{fmtCurrency(paymentError.payoffAmount)}</strong>
+                </Box>
+              )}
+            </Alert>
+          )}
           <TextField
             fullWidth
             label="Amount"
@@ -317,6 +351,8 @@ const LoanDetail: React.FC = () => {
             }
             margin="dense"
             required
+            helperText={`Outstanding payoff: ${fmtCurrency(payoffAmount)}`}
+            inputProps={{ min: 0.01, step: 0.01 }}
           />
 
           <FormControl fullWidth margin="dense">
